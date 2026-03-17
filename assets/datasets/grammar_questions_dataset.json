@@ -1,0 +1,302 @@
+[
+  {
+    "id": 1,
+    "question": "She ___ to the library every evening.",
+    "option_a": "go",
+    "option_b": "goes",
+    "option_c": "going",
+    "option_d": "gone",
+    "correct_answer": "goes",
+    "difficulty": "easy"
+  },
+  {
+    "id": 2,
+    "question": "We ___ dinner when the phone rang.",
+    "option_a": "have",
+    "option_b": "had",
+    "option_c": "were having",
+    "option_d": "having",
+    "correct_answer": "were having",
+    "difficulty": "easy"
+  },
+  {
+    "id": 3,
+    "question": "There ___ many students absent today.",
+    "option_a": "is",
+    "option_b": "are",
+    "option_c": "was",
+    "option_d": "be",
+    "correct_answer": "are",
+    "difficulty": "easy"
+  },
+  {
+    "id": 4,
+    "question": "My sister is taller ___ me.",
+    "option_a": "then",
+    "option_b": "to",
+    "option_c": "than",
+    "option_d": "from",
+    "correct_answer": "than",
+    "difficulty": "easy"
+  },
+  {
+    "id": 5,
+    "question": "He asked me ___ the window.",
+    "option_a": "open",
+    "option_b": "to open",
+    "option_c": "opening",
+    "option_d": "opened",
+    "correct_answer": "to open",
+    "difficulty": "easy"
+  },
+  {
+    "id": 6,
+    "question": "She has lived in this city ___ five years.",
+    "option_a": "since",
+    "option_b": "for",
+    "option_c": "from",
+    "option_d": "during",
+    "correct_answer": "for",
+    "difficulty": "easy"
+  },
+  {
+    "id": 7,
+    "question": "I don't have ___ money left.",
+    "option_a": "many",
+    "option_b": "much",
+    "option_c": "few",
+    "option_d": "several",
+    "correct_answer": "much",
+    "difficulty": "easy"
+  },
+  {
+    "id": 8,
+    "question": "The book ___ on the table yesterday.",
+    "option_a": "is",
+    "option_b": "were",
+    "option_c": "was",
+    "option_d": "be",
+    "correct_answer": "was",
+    "difficulty": "easy"
+  },
+  {
+    "id": 9,
+    "question": "Neither of the answers ___ correct.",
+    "option_a": "are",
+    "option_b": "were",
+    "option_c": "is",
+    "option_d": "have",
+    "correct_answer": "is",
+    "difficulty": "easy"
+  },
+  {
+    "id": 10,
+    "question": "They arrived ___ the airport early.",
+    "option_a": "in",
+    "option_b": "on",
+    "option_c": "at",
+    "option_d": "for",
+    "correct_answer": "at",
+    "difficulty": "easy"
+  },
+  {
+    "id": 11,
+    "question": "The teacher, along with the students, ___ present at the event.",
+    "option_a": "were",
+    "option_b": "was",
+    "option_c": "are",
+    "option_d": "have",
+    "correct_answer": "was",
+    "difficulty": "medium"
+  },
+  {
+    "id": 12,
+    "question": "Hardly had we started the meeting ___ the electricity failed.",
+    "option_a": "when",
+    "option_b": "than",
+    "option_c": "then",
+    "option_d": "while",
+    "correct_answer": "when",
+    "difficulty": "medium"
+  },
+  {
+    "id": 13,
+    "question": "Each of the participants ___ given detailed instructions.",
+    "option_a": "were",
+    "option_b": "are",
+    "option_c": "was",
+    "option_d": "have",
+    "correct_answer": "was",
+    "difficulty": "medium"
+  },
+  {
+    "id": 14,
+    "question": "She speaks English ___ than her brother.",
+    "option_a": "more fluent",
+    "option_b": "more fluently",
+    "option_c": "most fluently",
+    "option_d": "fluent",
+    "correct_answer": "more fluently",
+    "difficulty": "medium"
+  },
+  {
+    "id": 15,
+    "question": "He denied ___ the confidential files.",
+    "option_a": "to take",
+    "option_b": "taking",
+    "option_c": "take",
+    "option_d": "took",
+    "correct_answer": "taking",
+    "difficulty": "medium"
+  },
+  {
+    "id": 16,
+    "question": "If I ___ you, I would reconsider the decision.",
+    "option_a": "was",
+    "option_b": "am",
+    "option_c": "were",
+    "option_d": "had been",
+    "correct_answer": "were",
+    "difficulty": "medium"
+  },
+  {
+    "id": 17,
+    "question": "The committee recommended that the plan ___ revised.",
+    "option_a": "is",
+    "option_b": "be",
+    "option_c": "was",
+    "option_d": "being",
+    "correct_answer": "be",
+    "difficulty": "medium"
+  },
+  {
+    "id": 18,
+    "question": "The number of visitors ___ increased this year.",
+    "option_a": "have",
+    "option_b": "are",
+    "option_c": "has",
+    "option_d": "were",
+    "correct_answer": "has",
+    "difficulty": "medium"
+  },
+  {
+    "id": 19,
+    "question": "She is one of the students who ___ the assignment early.",
+    "option_a": "finishes",
+    "option_b": "finish",
+    "option_c": "finishing",
+    "option_d": "finished",
+    "correct_answer": "finish",
+    "difficulty": "medium"
+  },
+  {
+    "id": 20,
+    "question": "I look forward ___ meeting you again.",
+    "option_a": "to",
+    "option_b": "for",
+    "option_c": "at",
+    "option_d": "on",
+    "correct_answer": "to",
+    "difficulty": "medium"
+  },
+  {
+    "id": 21,
+    "question": "Not only the manager but also the employees ___ responsible for the mistake.",
+    "option_a": "is",
+    "option_b": "was",
+    "option_c": "are",
+    "option_d": "be",
+    "correct_answer": "are",
+    "difficulty": "hard"
+  },
+  {
+    "id": 22,
+    "question": "No sooner had the train left ___ the storm began.",
+    "option_a": "when",
+    "option_b": "than",
+    "option_c": "then",
+    "option_d": "while",
+    "correct_answer": "than",
+    "difficulty": "hard"
+  },
+  {
+    "id": 23,
+    "question": "Rarely ___ such an impressive performance.",
+    "option_a": "we see",
+    "option_b": "do we see",
+    "option_c": "we saw",
+    "option_d": "we have seen",
+    "correct_answer": "do we see",
+    "difficulty": "hard"
+  },
+  {
+    "id": 24,
+    "question": "Had she studied more carefully, she ___ the error.",
+    "option_a": "will notice",
+    "option_b": "would notice",
+    "option_c": "would have noticed",
+    "option_d": "noticed",
+    "correct_answer": "would have noticed",
+    "difficulty": "hard"
+  },
+  {
+    "id": 25,
+    "question": "The proposal was rejected, ___ surprised the entire team.",
+    "option_a": "which",
+    "option_b": "that",
+    "option_c": "what",
+    "option_d": "who",
+    "correct_answer": "which",
+    "difficulty": "hard"
+  },
+  {
+    "id": 26,
+    "question": "So difficult ___ the problem that few students could solve it.",
+    "option_a": "is",
+    "option_b": "was",
+    "option_c": "were",
+    "option_d": "has",
+    "correct_answer": "was",
+    "difficulty": "hard"
+  },
+  {
+    "id": 27,
+    "question": "He behaves as though he ___ the owner of the company.",
+    "option_a": "is",
+    "option_b": "was",
+    "option_c": "were",
+    "option_d": "had been",
+    "correct_answer": "were",
+    "difficulty": "hard"
+  },
+  {
+    "id": 28,
+    "question": "Little ___ that the project would fail so quickly.",
+    "option_a": "they knew",
+    "option_b": "did they know",
+    "option_c": "they did know",
+    "option_d": "know they",
+    "correct_answer": "did they know",
+    "difficulty": "hard"
+  },
+  {
+    "id": 29,
+    "question": "The book, along with several research papers, ___ published last year.",
+    "option_a": "were",
+    "option_b": "are",
+    "option_c": "was",
+    "option_d": "have been",
+    "correct_answer": "was",
+    "difficulty": "hard"
+  },
+  {
+    "id": 30,
+    "question": "Not until the results were announced ___ the tension in the room.",
+    "option_a": "everyone felt",
+    "option_b": "did everyone feel",
+    "option_c": "everyone did feel",
+    "option_d": "felt everyone",
+    "correct_answer": "did everyone feel",
+    "difficulty": "hard"
+  }
+]
