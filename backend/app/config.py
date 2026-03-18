@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import Field
+from pydantic import Field, AliasChoices
 from functools import lru_cache
 from pathlib import Path
 
@@ -34,7 +34,11 @@ class Settings(BaseSettings):
     
     # Backend settings
     api_host: str = Field(default="0.0.0.0", alias="API_HOST")
-    api_port: int = Field(default=8002, alias="API_PORT")
+    api_port: int = Field(
+        default=8002,
+        validation_alias=AliasChoices("API_PORT", "PORT"),
+        serialization_alias="API_PORT",
+    )
     debug: bool = Field(default=False, alias="DEBUG")
     
     # Frontend origin for CORS

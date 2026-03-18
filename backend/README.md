@@ -22,8 +22,22 @@ pip install -r requirements.txt
 4. Run the application:
 
 ```bash
-uvicorn app.main:app --reload
+python start_hypercorn.py
 ```
+
+## Deploying on Render
+
+This repo includes a Render blueprint at `render.yaml`.
+
+1. In Render, create a new **Web Service** from this repo (or use the blueprint).
+2. Set required environment variables (at minimum):
+
+```
+DATABASE_URL=postgresql://...
+SECRET_KEY=...
+```
+
+Render automatically provides `PORT`; the backend reads it.
 
 ## API Endpoints
 
