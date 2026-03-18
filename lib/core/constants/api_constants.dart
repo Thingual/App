@@ -1,7 +1,13 @@
 class ApiConstants {
-  // IMPORTANT: For physical devices, both devices must be on the same WiFi network
-  // Set to your PC's local network IP address
-  static const String baseUrl = 'http://172.19.48.149:8002';
+  /// Base URL for the backend.
+  ///
+  /// Defaults to the deployed Render service.
+  /// For local development you can override at build time:
+  /// `flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8002`
+  static const String baseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'https://thingual-backend.onrender.com',
+  );
 
   // Auth endpoints
   static const String signupEndpoint = '/auth/email/signup';
