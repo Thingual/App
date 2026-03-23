@@ -102,6 +102,41 @@ class ApiService {
     }
   }
 
+  /// Transcribe an audio file (recorded from mic) for the listening assessment.
+  ///
+  /// Expects the backend to run Whisper and return: `{ "text": "..." }`.
+  Future<String> transcribeListeningAudio({
+    required String filePath,
+    String? filename,
+  }) async {
+    try {
+      final formData = FormData.fromMap({
+        'file': await MultipartFile.fromFile(
+          filePath,
+          filename: filename,
+        ),
+      });
+
+      final response = await _dio.post(
+        ApiConstants.listeningTranscribeEndpoint,
+        data: formData,
+        options: Options(contentType: 'multipart/form-data'),
+      );
+
+      final data = response.data;
+      if (data is Map<String, dynamic> && data['text'] is String) {
+        return data['text'] as String;
+      }
+      if (data is Map && data['text'] is String) {
+        return data['text'] as String;
+      }
+
+      throw 'Unexpected transcription response format.';
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
   /// Sign up with phone number and password
   Future<void> phoneSignup({
     required String phoneNumber,

@@ -1,11 +1,21 @@
 import 'package:flutter/material.dart';
 import '../grammar_test/grammar_test_screen.dart';
 import '../sentence_completion_test/sentence_test_screen.dart';
+import '../listening_test/listening_test_screen.dart';
 import '../assessment_controller/assessment_controller.dart';
+import '../../authentication/screens/success_screen.dart';
+import '../assessment_controller/assessment_result_model.dart';
 
 enum LearningPace { casual, serious, intensive }
 
-enum OnboardingStep { pace, interests, grammarTest, sentenceTest, results }
+enum OnboardingStep {
+  pace,
+  interests,
+  grammarTest,
+  sentenceTest,
+  listeningTest,
+  results,
+}
 
 class PostLoginOnboardingScreen extends StatefulWidget {
   const PostLoginOnboardingScreen({super.key});
@@ -19,6 +29,8 @@ class _PostLoginOnboardingScreenState extends State<PostLoginOnboardingScreen> {
   late OnboardingStep _currentStep;
   LearningPace? _pace;
   late AssessmentController _assessmentController;
+
+  AssessmentResult? _finalResult;
 
   final Set<String> _selectedInterests = <String>{
     // default empty
@@ -64,17 +76,22 @@ class _PostLoginOnboardingScreenState extends State<PostLoginOnboardingScreen> {
   }
 
   void _handleSentenceTestCompleted() {
+    setState(() => _currentStep = OnboardingStep.listeningTest);
+  }
+
+  void _handleListeningTestCompleted() {
     final result = _assessmentController.getFinalResult();
     if (result != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Assessment completed! Grammar: ${result.grammarScore.toStringAsFixed(1)}%, Sentence: ${result.sentenceCompletionScore.toStringAsFixed(1)}%',
-          ),
-        ),
-      );
-      // Here you could navigate to the next screen or save results
+      setState(() {
+        _finalResult = result;
+        _currentStep = OnboardingStep.results;
+      });
+      return;
     }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Could not compute assessment result.')),
+    );
   }
 
   @override
@@ -94,6 +111,40 @@ class _PostLoginOnboardingScreenState extends State<PostLoginOnboardingScreen> {
       return SentenceCompletionTestScreen(
         assessmentController: _assessmentController,
         onCompleted: _handleSentenceTestCompleted,
+      );
+    }
+
+    if (_currentStep == OnboardingStep.listeningTest) {
+      return ListeningTestScreen(
+        assessmentController: _assessmentController,
+        onCompleted: _handleListeningTestCompleted,
+      );
+    }
+
+    if (_currentStep == OnboardingStep.results) {
+      final result = _finalResult;
+      if (result == null) {
+        return Scaffold(
+          body: SafeArea(
+            child: Center(
+              child: Text(
+                'No results available.',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+            ),
+          ),
+        );
+      }
+
+      return _AssessmentResultsScreen(
+        result: result,
+        onFinish: () {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (_) => const SuccessScreen()),
+            (route) => false,
+          );
+        },
       );
     }
 
@@ -408,4 +459,177 @@ class _InterestOption {
   const _InterestOption(this.label);
 
   final String label;
+}
+
+class _AssessmentResultsScreen extends StatelessWidget {
+  const _AssessmentResultsScreen({required this.result, required this.onFinish});
+
+  final AssessmentResult result;
+  final VoidCallback onFinish;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Scaffold(
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'Assessment Results',
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Here\'s how you did across sections.',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+              ),
+              const SizedBox(height: 24),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 52,
+                      height: 52,
+                      decoration: BoxDecoration(
+                        color: colorScheme.primary,
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Icon(
+                        Icons.emoji_events,
+                        color: colorScheme.onPrimary,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Overall score',
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                  color: colorScheme.onSurfaceVariant,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${result.overallScore.toStringAsFixed(1)}%',
+                            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                  fontWeight: FontWeight.w800,
+                                ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              _ScoreTile(
+                title: 'Grammar',
+                scoreText: '${result.grammarScore.toStringAsFixed(1)}%',
+                subtitle: '${result.grammarResults.length} questions',
+              ),
+              const SizedBox(height: 12),
+              _ScoreTile(
+                title: 'Sentence completion',
+                scoreText: '${result.sentenceCompletionScore.toStringAsFixed(1)}%',
+                subtitle: '${result.sentenceCompletionResults.length} questions',
+              ),
+              const SizedBox(height: 12),
+              _ScoreTile(
+                title: 'Listening',
+                scoreText: '${result.listeningScore.toStringAsFixed(1)}%',
+                subtitle: '${result.listeningResults.length} prompts',
+              ),
+              const Spacer(),
+              SizedBox(
+                height: 56,
+                child: ElevatedButton(
+                  onPressed: onFinish,
+                  style: ElevatedButton.styleFrom(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text('Finish'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ScoreTile extends StatelessWidget {
+  const _ScoreTile({
+    required this.title,
+    required this.scoreText,
+    required this.subtitle,
+  });
+
+  final String title;
+  final String scoreText;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: colorScheme.outlineVariant),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Text(
+            scoreText,
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: colorScheme.primary,
+                ),
+          ),
+        ],
+      ),
+    );
+  }
 }

@@ -16,7 +16,7 @@ from contextlib import asynccontextmanager
 if sys.platform == "win32":
     os.environ["PYTHONIOENCODING"] = "utf-8"
 
-from .routers import auth_router
+from .routers import auth_router, listening_router
 from .database import init_db
 from .config import get_settings
 
@@ -63,6 +63,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(auth_router)
+app.include_router(listening_router)
 
 
 @app.get("/")

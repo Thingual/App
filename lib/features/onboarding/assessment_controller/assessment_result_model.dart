@@ -7,6 +7,7 @@ class AssessmentQuestionResult {
   final String correctAnswer;
   final bool isCorrect;
   final double responseTime; // in seconds
+  final double? numericScore; // 0..1 for listening similarity, etc
 
   AssessmentQuestionResult({
     required this.questionId,
@@ -16,6 +17,7 @@ class AssessmentQuestionResult {
     required this.correctAnswer,
     required this.isCorrect,
     required this.responseTime,
+    this.numericScore,
   });
 
   Map<String, dynamic> toMap() {
@@ -27,6 +29,7 @@ class AssessmentQuestionResult {
       'correctAnswer': correctAnswer,
       'isCorrect': isCorrect,
       'responseTime': responseTime,
+      if (numericScore != null) 'numericScore': numericScore,
     };
   }
 }
@@ -35,11 +38,13 @@ class AssessmentQuestionResult {
 class AssessmentResult {
   final List<AssessmentQuestionResult> grammarResults;
   final List<AssessmentQuestionResult> sentenceCompletionResults;
+  final List<AssessmentQuestionResult> listeningResults;
   final DateTime completedAt;
 
   AssessmentResult({
     required this.grammarResults,
     required this.sentenceCompletionResults,
+    required this.listeningResults,
     required this.completedAt,
   });
 
@@ -59,9 +64,37 @@ class AssessmentResult {
     return (correctCount / sentenceCompletionResults.length) * 100;
   }
 
+  /// Listening score as a percentage.
+  ///
+  /// Uses per-question [numericScore] (0..1) when provided.
+  double get listeningScore {
+    if (listeningResults.isEmpty) return 0;
+
+    final scored = listeningResults
+        .map((r) => r.numericScore)
+        .whereType<double>()
+        .toList();
+
+    if (scored.isEmpty) {
+      final correctCount = listeningResults.where((r) => r.isCorrect).length;
+      return (correctCount / listeningResults.length) * 100;
+    }
+
+    final avg = scored.fold<double>(0, (sum, s) => sum + s) / scored.length;
+    return avg * 100;
+  }
+
   /// Calculate overall score as average of both sections
   double get overallScore {
-    return (grammarScore + sentenceCompletionScore) / 2;
+    final sections = <double>[];
+    if (grammarResults.isNotEmpty) sections.add(grammarScore);
+    if (sentenceCompletionResults.isNotEmpty) {
+      sections.add(sentenceCompletionScore);
+    }
+    if (listeningResults.isNotEmpty) sections.add(listeningScore);
+
+    if (sections.isEmpty) return 0;
+    return sections.fold<double>(0, (sum, s) => sum + s) / sections.length;
   }
 
   /// Calculate average response time for grammar section
@@ -90,8 +123,10 @@ class AssessmentResult {
       'sentenceCompletionResults': sentenceCompletionResults
           .map((r) => r.toMap())
           .toList(),
+      'listeningResults': listeningResults.map((r) => r.toMap()).toList(),
       'grammarScore': grammarScore,
       'sentenceCompletionScore': sentenceCompletionScore,
+      'listeningScore': listeningScore,
       'overallScore': overallScore,
       'completedAt': completedAt.toIso8601String(),
     };
