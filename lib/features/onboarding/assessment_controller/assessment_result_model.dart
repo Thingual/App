@@ -8,6 +8,7 @@ class AssessmentQuestionResult {
   final bool isCorrect;
   final double responseTime; // in seconds
   final double? numericScore; // 0..1 for listening similarity, etc
+  final String? scoringSource; // 'rule_engine', 'llm', or null for other
 
   AssessmentQuestionResult({
     required this.questionId,
@@ -18,6 +19,7 @@ class AssessmentQuestionResult {
     required this.isCorrect,
     required this.responseTime,
     this.numericScore,
+    this.scoringSource,
   });
 
   Map<String, dynamic> toMap() {
@@ -30,6 +32,7 @@ class AssessmentQuestionResult {
       'isCorrect': isCorrect,
       'responseTime': responseTime,
       if (numericScore != null) 'numericScore': numericScore,
+      if (scoringSource != null) 'scoringSource': scoringSource,
     };
   }
 }
@@ -39,12 +42,14 @@ class AssessmentResult {
   final List<AssessmentQuestionResult> grammarResults;
   final List<AssessmentQuestionResult> sentenceCompletionResults;
   final List<AssessmentQuestionResult> listeningResults;
+  final List<AssessmentQuestionResult> pictureDescriptionResults;
   final DateTime completedAt;
 
   AssessmentResult({
     required this.grammarResults,
     required this.sentenceCompletionResults,
     required this.listeningResults,
+    required this.pictureDescriptionResults,
     required this.completedAt,
   });
 
@@ -84,7 +89,27 @@ class AssessmentResult {
     return avg * 100;
   }
 
-  /// Calculate overall score as average of both sections
+  /// Picture description score as a percentage
+  double get pictureDescriptionScore {
+    if (pictureDescriptionResults.isEmpty) return 0;
+
+    final scored = pictureDescriptionResults
+        .map((r) => r.numericScore)
+        .whereType<double>()
+        .toList();
+
+    if (scored.isEmpty) {
+      final correctCount = pictureDescriptionResults
+          .where((r) => r.isCorrect)
+          .length;
+      return (correctCount / pictureDescriptionResults.length) * 100;
+    }
+
+    final avg = scored.fold<double>(0, (sum, s) => sum + s) / scored.length;
+    return avg * 100;
+  }
+
+  /// Calculate overall score as average of all sections
   double get overallScore {
     final sections = <double>[];
     if (grammarResults.isNotEmpty) sections.add(grammarScore);
@@ -92,6 +117,9 @@ class AssessmentResult {
       sections.add(sentenceCompletionScore);
     }
     if (listeningResults.isNotEmpty) sections.add(listeningScore);
+    if (pictureDescriptionResults.isNotEmpty) {
+      sections.add(pictureDescriptionScore);
+    }
 
     if (sections.isEmpty) return 0;
     return sections.fold<double>(0, (sum, s) => sum + s) / sections.length;
@@ -124,9 +152,13 @@ class AssessmentResult {
           .map((r) => r.toMap())
           .toList(),
       'listeningResults': listeningResults.map((r) => r.toMap()).toList(),
+      'pictureDescriptionResults': pictureDescriptionResults
+          .map((r) => r.toMap())
+          .toList(),
       'grammarScore': grammarScore,
       'sentenceCompletionScore': sentenceCompletionScore,
       'listeningScore': listeningScore,
+      'pictureDescriptionScore': pictureDescriptionScore,
       'overallScore': overallScore,
       'completedAt': completedAt.toIso8601String(),
     };

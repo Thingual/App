@@ -6,10 +6,13 @@ class AssessmentController extends ChangeNotifier {
   final List<AssessmentQuestionResult> _grammarResults = [];
   final List<AssessmentQuestionResult> _sentenceResults = [];
   final List<AssessmentQuestionResult> _listeningResults = [];
+  final List<AssessmentQuestionResult> _pictureDescriptionResults = [];
 
   List<AssessmentQuestionResult> get grammarResults => _grammarResults;
   List<AssessmentQuestionResult> get sentenceResults => _sentenceResults;
   List<AssessmentQuestionResult> get listeningResults => _listeningResults;
+  List<AssessmentQuestionResult> get pictureDescriptionResults =>
+      _pictureDescriptionResults;
 
   /// Add a grammar question result
   void addGrammarResult(AssessmentQuestionResult result) {
@@ -29,11 +32,18 @@ class AssessmentController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Add a picture description question result
+  void addPictureDescriptionResult(AssessmentQuestionResult result) {
+    _pictureDescriptionResults.add(result);
+    notifyListeners();
+  }
+
   /// Get the final assessment result
   AssessmentResult? getFinalResult() {
     if (_grammarResults.isEmpty ||
         _sentenceResults.isEmpty ||
-        _listeningResults.isEmpty) {
+        _listeningResults.isEmpty ||
+        _pictureDescriptionResults.isEmpty) {
       return null;
     }
 
@@ -41,6 +51,7 @@ class AssessmentController extends ChangeNotifier {
       grammarResults: _grammarResults,
       sentenceCompletionResults: _sentenceResults,
       listeningResults: _listeningResults,
+      pictureDescriptionResults: _pictureDescriptionResults,
       completedAt: DateTime.now(),
     );
   }
@@ -50,6 +61,7 @@ class AssessmentController extends ChangeNotifier {
     _grammarResults.clear();
     _sentenceResults.clear();
     _listeningResults.clear();
+    _pictureDescriptionResults.clear();
     notifyListeners();
   }
 

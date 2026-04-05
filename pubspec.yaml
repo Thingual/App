@@ -77,6 +77,8 @@ flutter:
     - assets/datasets/grammar_questions_dataset.json
     - assets/datasets/sentence_dataset.json
     - assets/datasets/listening_dataset.json
+    - assets/datasets/picture_description_dataset.json
+    - assets/images/kitchen_couple.jpg
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

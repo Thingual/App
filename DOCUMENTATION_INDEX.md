@@ -6,20 +6,21 @@
 
 1. **[FINAL_SUMMARY.md](FINAL_SUMMARY.md)** - Overview and status
 2. **[ASSESSMENT_SUMMARY.md](ASSESSMENT_SUMMARY.md)** - High-level summary
+3. **[PICTURE_DESCRIPTION_IMPLEMENTATION.md](PICTURE_DESCRIPTION_IMPLEMENTATION.md)** - Picture Description Module (NEW!)
 
 ### 🏗️ Architecture & Design
 
-3. **[ARCHITECTURE_DESIGN.md](ARCHITECTURE_DESIGN.md)** - Diagrams and technical architecture
-4. **[ASSESSMENT_IMPLEMENTATION.md](ASSESSMENT_IMPLEMENTATION.md)** - Detailed features and implementation
+4. **[ARCHITECTURE_DESIGN.md](ARCHITECTURE_DESIGN.md)** - Diagrams and technical architecture
+5. **[ASSESSMENT_IMPLEMENTATION.md](ASSESSMENT_IMPLEMENTATION.md)** - Detailed features and implementation
 
 ### 📖 Integration & Usage
 
-5. **[ASSESSMENT_INTEGRATION_GUIDE.md](ASSESSMENT_INTEGRATION_GUIDE.md)** - Step-by-step integration
-6. **[ASSESSMENT_API_REFERENCE.md](ASSESSMENT_API_REFERENCE.md)** - Complete API documentation
+6. **[ASSESSMENT_INTEGRATION_GUIDE.md](ASSESSMENT_INTEGRATION_GUIDE.md)** - Step-by-step integration
+7. **[ASSESSMENT_API_REFERENCE.md](ASSESSMENT_API_REFERENCE.md)** - Complete API documentation
 
 ### ✅ Verification
 
-7. **[IMPLEMENTATION_CHECKLIST.md](IMPLEMENTATION_CHECKLIST.md)** - Testing and verification checklist
+8. **[IMPLEMENTATION_CHECKLIST.md](IMPLEMENTATION_CHECKLIST.md)** - Testing and verification checklist
 
 ---
 
@@ -28,8 +29,8 @@
 ```
 lib/features/onboarding/
 ├── assessment_controller/
-│   ├── assessment_controller.dart
-│   └── assessment_result_model.dart
+│   ├── assessment_controller.dart (updated with picture_description)
+│   └── assessment_result_model.dart (updated with picture_description)
 ├── grammar_test/
 │   ├── grammar_question_model.dart
 │   ├── grammar_test_service.dart
@@ -38,12 +39,28 @@ lib/features/onboarding/
 │   ├── sentence_question_model.dart
 │   ├── sentence_test_service.dart
 │   └── sentence_test_screen.dart
+├── listening_test/
+│   └── (listening assessment files)
+├── picture_description_test/ (NEW MODULE)
+│   ├── README.md (detailed documentation)
+│   ├── picture_description.dart (exports)
+│   ├── picture_description_test_screen.dart (UI)
+│   ├── models/
+│   │   └── picture_model.dart
+│   └── services/
+│       ├── model_manager.dart
+│       ├── rule_engine.dart
+│       ├── llm_service.dart
+│       ├── scoring_service.dart
+│       └── picture_dataset_service.dart
 └── screens/
-    └── post_login_onboarding_screen.dart (updated)
+    └── post_login_onboarding_screen.dart (updated with picture_description step)
 
 assets/datasets/
 ├── grammar_questions_dataset.json
-└── sentence_dataset.json
+├── sentence_dataset.json
+├── listening_dataset.json
+└── picture_description_dataset.json (NEW)
 ```
 
 ---

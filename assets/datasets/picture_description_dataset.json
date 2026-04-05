@@ -1,0 +1,38 @@
+[
+  {
+    "id": 1,
+    "image_path": "images/kitchen_couple.jpg",
+    "keywords": [
+      "kitchen",
+      "cooking",
+      "chopping",
+      "stirring",
+      "vegetables",
+      "pot",
+      "stove",
+      "couple"
+    ],
+    "cefr_levels": {
+      "A1": {
+        "description": "Two people are in a kitchen. The woman is cutting vegetables. The man is cooking on the stove.",
+        "level": "A1"
+      },
+      "A2": {
+        "description": "Two people are in a kitchen. The woman is cutting vegetables. The man is cooking on the stove.",
+        "level": "A2"
+      },
+      "B1": {
+        "description": "This picture shows a man and a woman preparing dinner together. The woman is chopping red and yellow peppers on a cutting board, while the man is busy stirring food in a pot on the gas stove.",
+        "level": "B1"
+      },
+      "B2": {
+        "description": "The image captures a casual, happy moment of a couple cooking a meal in their well-lit kitchen. The woman is focused on slicing fresh vegetables with a sharp knife, and the man beside her is actively stirring the contents of a pot simmering on the stove, perhaps making a sauce. They appear to be enjoying the process and each other's company.",
+        "level": "B2"
+      },
+      "C1": {
+        "description": "The image captures a casual, happy moment of a couple cooking a meal in their well-lit kitchen. The woman is focused on slicing fresh vegetables with a sharp knife, and the man beside her is actively stirring the contents of a pot simmering on the stove, perhaps making a sauce. They appear to be enjoying the process and each other's company.",
+        "level": "C1"
+      }
+    }
+  }
+]

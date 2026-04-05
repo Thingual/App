@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import '../grammar_test/grammar_test_screen.dart';
 import '../sentence_completion_test/sentence_test_screen.dart';
 import '../listening_test/listening_test_screen.dart';
+import '../picture_description_test/picture_description_test_screen.dart';
+import '../picture_description_test/services/model_manager.dart';
 import '../assessment_controller/assessment_controller.dart';
 import '../../authentication/screens/success_screen.dart';
 import '../assessment_controller/assessment_result_model.dart';
@@ -11,9 +14,11 @@ enum LearningPace { casual, serious, intensive }
 enum OnboardingStep {
   pace,
   interests,
+  modelDownload,
   grammarTest,
   sentenceTest,
   listeningTest,
+  pictureDescriptionTest,
   results,
 }
 
@@ -29,6 +34,7 @@ class _PostLoginOnboardingScreenState extends State<PostLoginOnboardingScreen> {
   late OnboardingStep _currentStep;
   LearningPace? _pace;
   late AssessmentController _assessmentController;
+  late ModelManager _modelManager;
 
   AssessmentResult? _finalResult;
 
@@ -53,6 +59,8 @@ class _PostLoginOnboardingScreenState extends State<PostLoginOnboardingScreen> {
     super.initState();
     _currentStep = OnboardingStep.pace;
     _assessmentController = AssessmentController();
+    _modelManager = ModelManager();
+    _modelManager.initialize();
   }
 
   void _goNext() {
@@ -62,6 +70,11 @@ class _PostLoginOnboardingScreenState extends State<PostLoginOnboardingScreen> {
     }
 
     if (_currentStep == OnboardingStep.interests) {
+      setState(() => _currentStep = OnboardingStep.modelDownload);
+      return;
+    }
+
+    if (_currentStep == OnboardingStep.modelDownload) {
       setState(() => _currentStep = OnboardingStep.grammarTest);
       return;
     }
@@ -80,6 +93,10 @@ class _PostLoginOnboardingScreenState extends State<PostLoginOnboardingScreen> {
   }
 
   void _handleListeningTestCompleted() {
+    setState(() => _currentStep = OnboardingStep.pictureDescriptionTest);
+  }
+
+  void _handlePictureDescriptionCompleted() {
     final result = _assessmentController.getFinalResult();
     if (result != null) {
       setState(() {
@@ -97,6 +114,14 @@ class _PostLoginOnboardingScreenState extends State<PostLoginOnboardingScreen> {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+
+    // Show model download screen
+    if (_currentStep == OnboardingStep.modelDownload) {
+      return _ModelDownloadScreen(
+        modelManager: _modelManager,
+        onCompleted: _goNext,
+      );
+    }
 
     // Show grammar test screen
     if (_currentStep == OnboardingStep.grammarTest) {
@@ -118,6 +143,14 @@ class _PostLoginOnboardingScreenState extends State<PostLoginOnboardingScreen> {
       return ListeningTestScreen(
         assessmentController: _assessmentController,
         onCompleted: _handleListeningTestCompleted,
+      );
+    }
+
+    if (_currentStep == OnboardingStep.pictureDescriptionTest) {
+      return PictureDescriptionTestScreen(
+        assessmentController: _assessmentController,
+        onCompleted: _handlePictureDescriptionCompleted,
+        modelManager: _modelManager,
       );
     }
 
@@ -560,6 +593,12 @@ class _AssessmentResultsScreen extends StatelessWidget {
                 scoreText: '${result.listeningScore.toStringAsFixed(1)}%',
                 subtitle: '${result.listeningResults.length} prompts',
               ),
+              const SizedBox(height: 12),
+              _PictureDescriptionScoreTile(
+                score: result.pictureDescriptionScore,
+                count: result.pictureDescriptionResults.length,
+                results: result.pictureDescriptionResults,
+              ),
               const Spacer(),
               SizedBox(
                 height: 56,
@@ -635,6 +674,389 @@ class _ScoreTile extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _PictureDescriptionScoreTile extends StatelessWidget {
+  const _PictureDescriptionScoreTile({
+    required this.score,
+    required this.count,
+    required this.results,
+  });
+
+  final double score;
+  final int count;
+  final List<AssessmentQuestionResult> results;
+
+  String _getScoringSourceLabel() {
+    if (results.isEmpty) return 'No data';
+
+    final firstResult = results.first;
+    final source = firstResult.scoringSource ?? 'unknown';
+
+    if (source == 'llm') {
+      return 'AI Scoring';
+    } else if (source == 'rule_engine') {
+      return 'Rule-Based';
+    } else {
+      return 'Standard';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final sourceLabel = _getScoringSourceLabel();
+    final isLlmScored =
+        results.isNotEmpty && results.first.scoringSource == 'llm';
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: colorScheme.outlineVariant),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Picture Description',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '$count description(s)',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                '${score.toStringAsFixed(1)}%',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: colorScheme.primary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: isLlmScored
+                  ? colorScheme.primaryContainer
+                  : colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  isLlmScored ? Icons.smart_toy : Icons.rule,
+                  size: 16,
+                  color: isLlmScored
+                      ? colorScheme.onPrimaryContainer
+                      : colorScheme.onSurfaceVariant,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'Scored by: $sourceLabel',
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: isLlmScored
+                        ? colorScheme.onPrimaryContainer
+                        : colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ModelDownloadScreen extends StatefulWidget {
+  final ModelManager modelManager;
+  final VoidCallback onCompleted;
+
+  const _ModelDownloadScreen({
+    required this.modelManager,
+    required this.onCompleted,
+  });
+
+  @override
+  State<_ModelDownloadScreen> createState() => _ModelDownloadScreenState();
+}
+
+class _ModelDownloadScreenState extends State<_ModelDownloadScreen> {
+  bool _isDownloading = false;
+  double _downloadProgress = 0.0;
+
+  Future<void> _startDownload() async {
+    if (_isDownloading) return;
+
+    setState(() => _isDownloading = true);
+    try {
+      // Simulate download with progress updates
+      for (int i = 0; i <= 100; i += 10) {
+        if (!mounted) return;
+        setState(() => _downloadProgress = i / 100.0);
+        await Future.delayed(const Duration(milliseconds: 200));
+      }
+
+      await widget.modelManager.downloadModel();
+      if (mounted) {
+        setState(() => _isDownloading = false);
+        widget.onCompleted();
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isDownloading = false);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Download failed: $e')));
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isModelAvailable = widget.modelManager.isModelAvailable;
+
+    return Scaffold(
+      body: SafeArea(
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Title
+                Text(
+                  'AI-Powered Evaluation',
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    color: colorScheme.onSurface,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Description
+                Text(
+                  'Unlock advanced language assessment with our AI evaluation pack. Get detailed feedback beyond rule-based scoring.',
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                    height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 32),
+
+                // Benefits Card
+                Container(
+                  decoration: BoxDecoration(
+                    color: colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: colorScheme.outline),
+                  ),
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _BenefitItem(
+                        icon: Icons.psychology,
+                        title: 'Intelligent Scoring',
+                        description:
+                            'AI-powered assessment combines rules with language models',
+                      ),
+                      const SizedBox(height: 16),
+                      _BenefitItem(
+                        icon: Icons.cloud_done,
+                        title: 'Fully Offline',
+                        description:
+                            'Once downloaded, works completely offline - no data sharing',
+                      ),
+                      const SizedBox(height: 16),
+                      _BenefitItem(
+                        icon: Icons.speed,
+                        title: 'Fast & Responsive',
+                        description:
+                            'Instant feedback on your language descriptions',
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 32),
+
+                // Status Section
+                if (isModelAvailable)
+                  Container(
+                    decoration: BoxDecoration(
+                      color: colorScheme.secondaryContainer,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    padding: const EdgeInsets.all(12),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.check_circle,
+                          color: colorScheme.secondary,
+                          size: 24,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'AI Pack Ready',
+                                style: Theme.of(context).textTheme.labelLarge
+                                    ?.copyWith(
+                                      color: colorScheme.secondary,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                              ),
+                              Text(
+                                'Model is available and ready to use',
+                                style: Theme.of(context).textTheme.labelSmall
+                                    ?.copyWith(
+                                      color: colorScheme.onSecondaryContainer,
+                                    ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                else if (_isDownloading)
+                  Column(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: LinearProgressIndicator(
+                          value: _downloadProgress,
+                          minHeight: 8,
+                          backgroundColor: colorScheme.surfaceContainerHighest,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            colorScheme.primary,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Downloading... ${(_downloadProgress * 100).toStringAsFixed(0)}%',
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                const SizedBox(height: 32),
+
+                // Action Buttons
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: isModelAvailable || _isDownloading
+                        ? null
+                        : _startDownload,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      child: Text(
+                        isModelAvailable
+                            ? 'AI Pack Downloaded'
+                            : _isDownloading
+                            ? 'Downloading...'
+                            : 'Download AI Evaluation Pack',
+                        style: const TextStyle(fontSize: 16),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // Skip Button
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    onPressed: widget.onCompleted,
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 12),
+                      child: Text(
+                        'Skip for Now',
+                        style: TextStyle(fontSize: 16),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _BenefitItem extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String description;
+
+  const _BenefitItem({
+    required this.icon,
+    required this.title,
+    required this.description,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, color: colorScheme.primary, size: 24),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  color: colorScheme.onSurface,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                description,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
