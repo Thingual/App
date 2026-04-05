@@ -3,7 +3,7 @@ services:
     name: thingual-backend
     env: python
     rootDir: backend
-    buildCommand: bash build.sh
+    buildCommand: bash ./build.sh
     startCommand: python start_hypercorn.py
     healthCheckPath: /health
     healthCheckTimeoutSeconds: 30
