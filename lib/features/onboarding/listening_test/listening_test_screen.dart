@@ -1,12 +1,8 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:record/record.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
 
-import '../../../core/services/api_service.dart';
 import '../assessment_controller/assessment_controller.dart';
 import '../assessment_controller/assessment_result_model.dart';
 import 'listening_question_model.dart';
@@ -35,21 +31,17 @@ class _ListeningTestScreenState extends State<ListeningTestScreen> {
   int _currentQuestionIndex = 0;
 
   final FlutterTts _tts = FlutterTts();
-  final AudioRecorder _recorder = AudioRecorder();
-  final ApiService _apiService = ApiService();
+  final stt.SpeechToText _speechToText = stt.SpeechToText();
 
   final TextEditingController _answerController = TextEditingController();
-  _ListeningInputMode _mode = _ListeningInputMode.speak;
+  _ListeningInputMode _mode = _ListeningInputMode.type;
 
   late Stopwatch _stopwatch;
 
   bool _isLoading = true;
   String? _error;
-
   bool _isSpeaking = false;
-  bool _isRecording = false;
-  bool _isTranscribing = false;
-  String? _recordingPath;
+  bool _isListening = false;
 
   @override
   void initState() {
@@ -57,6 +49,7 @@ class _ListeningTestScreenState extends State<ListeningTestScreen> {
     _service = ListeningTestService();
     _stopwatch = Stopwatch();
     _initTts();
+    _initSpeechToText();
     _loadQuestions();
   }
 
@@ -66,19 +59,34 @@ class _ListeningTestScreenState extends State<ListeningTestScreen> {
     await _tts.setPitch(1.0);
 
     _tts.setStartHandler(() {
-      if (!mounted) return;
-      setState(() => _isSpeaking = true);
+      if (mounted) setState(() => _isSpeaking = true);
     });
 
     _tts.setCompletionHandler(() {
-      if (!mounted) return;
-      setState(() => _isSpeaking = false);
+      if (mounted) setState(() => _isSpeaking = false);
     });
 
     _tts.setErrorHandler((_) {
-      if (!mounted) return;
-      setState(() => _isSpeaking = false);
+      if (mounted) setState(() => _isSpeaking = false);
     });
+  }
+
+  Future<void> _initSpeechToText() async {
+    try {
+      await _speechToText.initialize(
+        onError: (error) {
+          print('🎤 Speech-to-text error: $error');
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Speech error: $error')),
+            );
+          }
+        },
+        onStatus: (status) => print('🎤 Speech status: $status'),
+      );
+    } catch (e) {
+      print('❌ Speech-to-text init failed: $e');
+    }
   }
 
   Future<void> _loadQuestions() async {
@@ -104,103 +112,67 @@ class _ListeningTestScreenState extends State<ListeningTestScreen> {
       await _tts.stop();
       return;
     }
-
     await _tts.speak(_currentQuestion.sentence);
   }
 
-  Future<bool> _ensureMicPermission() async {
-    final status = await Permission.microphone.request();
-    return status.isGranted;
-  }
+  Future<void> _startListening() async {
+    if (_isListening) return;
 
-  Future<String> _newTempRecordingPath() async {
-    final dir = await getTemporaryDirectory();
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
-    return '${dir.path}${Platform.pathSeparator}listening_$timestamp.m4a';
-  }
-
-  Future<void> _toggleRecording() async {
-    if (_isTranscribing) return;
-
-    if (_isRecording) {
-      final path = await _recorder.stop();
-      setState(() {
-        _isRecording = false;
-        _recordingPath = path;
-      });
-
-      if (path == null) {
-        if (!mounted) return;
+    final permission = await Permission.microphone.request();
+    if (!permission.isGranted) {
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Recording failed to save.')),
+          const SnackBar(content: Text('Microphone permission required')),
         );
-        return;
       }
-
-      await _transcribe(path);
       return;
     }
 
-    final hasPermission = await _ensureMicPermission();
-    if (!hasPermission) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Microphone permission is required.')),
-      );
+    if (!_speechToText.isAvailable) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Speech-to-text not available')),
+        );
+      }
       return;
     }
 
-    final path = await _newTempRecordingPath();
-
-    await _recorder.start(
-      const RecordConfig(
-        encoder: AudioEncoder.aacLc,
-        numChannels: 1,
-        sampleRate: 16000,
-      ),
-      path: path,
-    );
-
-    setState(() {
-      _isRecording = true;
-      _recordingPath = path;
-    });
-  }
-
-  Future<void> _transcribe(String filePath) async {
-    setState(() => _isTranscribing = true);
+    setState(() => _isListening = true);
 
     try {
-      print('🎤 Starting transcription for file: $filePath');
-      final text = await _apiService.transcribeListeningAudio(
-        filePath: filePath,
-        filename: 'listening.m4a',
+      await _speechToText.listen(
+        onResult: (result) {
+          print('🎤 Heard: ${result.recognizedWords}');
+          setState(() {
+            _answerController.text = result.recognizedWords;
+          });
+        },
+        listenFor: const Duration(seconds: 10),
+        pauseFor: const Duration(seconds: 3),
+        partialResults: true,
+        onSoundLevelChange: (level) => print('🔊 Sound level: $level'),
       );
-
-      print('✅ Transcription successful: $text');
-      if (!mounted) return;
-      setState(() {
-        _answerController.text = text.trim();
-        _isTranscribing = false;
-      });
     } catch (e) {
-      print('❌ Transcription failed: $e');
-      if (!mounted) return;
-      setState(() => _isTranscribing = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Transcription failed: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      print('❌ Listen error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
     }
+  }
+
+  Future<void> _stopListening() async {
+    if (!_isListening) return;
+    await _speechToText.stop();
+    setState(() => _isListening = false);
   }
 
   void _handleNext() {
     final answer = _answerController.text.trim();
     if (answer.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please provide your answer.')),
+        const SnackBar(content: Text('Please provide your answer')),
       );
       return;
     }
@@ -232,11 +204,8 @@ class _ListeningTestScreenState extends State<ListeningTestScreen> {
       setState(() {
         _currentQuestionIndex++;
         _answerController.clear();
-        _recordingPath = null;
-        _isRecording = false;
-        _stopwatch
-          ..reset()
-          ..start();
+        _stopwatch.reset();
+        _stopwatch.start();
       });
     } else {
       _stopwatch.stop();
@@ -246,10 +215,10 @@ class _ListeningTestScreenState extends State<ListeningTestScreen> {
 
   @override
   void dispose() {
-    _stopwatch.stop();
     _tts.stop();
-    _recorder.dispose();
+    _speechToText.cancel();
     _answerController.dispose();
+    _stopwatch.stop();
     super.dispose();
   }
 
@@ -266,7 +235,11 @@ class _ListeningTestScreenState extends State<ListeningTestScreen> {
     }
 
     if (_error != null) {
-      return Scaffold(body: Center(child: Text(_error!)));
+      return Scaffold(
+        body: Center(
+          child: Text(_error!),
+        ),
+      );
     }
 
     return Scaffold(
@@ -323,103 +296,75 @@ class _ListeningTestScreenState extends State<ListeningTestScreen> {
                             ),
                             const SizedBox(height: 6),
                             Text(
-                              'You can type it, or repeat it out loud.',
+                              'Play the audio, then type your response or use speech recognition.',
                               style: Theme.of(context).textTheme.bodyMedium
                                   ?.copyWith(
                                     color: colorScheme.onSurfaceVariant,
                                   ),
                             ),
                             const SizedBox(height: 16),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: OutlinedButton.icon(
-                                    onPressed: _playPrompt,
-                                    style: OutlinedButton.styleFrom(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 16,
-                                        vertical: 14,
-                                      ),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                    ),
-                                    icon: Icon(
-                                      _isSpeaking
-                                          ? Icons.stop
-                                          : Icons.volume_up,
-                                      color: colorScheme.primary,
-                                    ),
-                                    label: Text(
-                                      _isSpeaking ? 'Stop' : 'Play audio',
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .titleMedium
-                                          ?.copyWith(
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                    ),
-                                  ),
+                            SizedBox(
+                              width: double.infinity,
+                              child: OutlinedButton.icon(
+                                onPressed: _playPrompt,
+                                icon: Icon(
+                                  _isSpeaking
+                                      ? Icons.stop_circle
+                                      : Icons.play_circle_outline,
                                 ),
-                                const SizedBox(width: 12),
-                                _ModeToggle(
-                                  mode: _mode,
-                                  onChanged: (m) => setState(() => _mode = m),
+                                label: Text(
+                                  _isSpeaking ? 'Stop' : 'Play Audio',
                                 ),
-                              ],
+                              ),
                             ),
-                            if (_mode == _ListeningInputMode.speak) ...[
-                              const SizedBox(height: 16),
+                            const SizedBox(height: 16),
+                            if (_mode == _ListeningInputMode.speak)
                               SizedBox(
                                 width: double.infinity,
                                 child: ElevatedButton.icon(
-                                  onPressed: _toggleRecording,
-                                  style: ElevatedButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                      vertical: 14,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                  ),
+                                  onPressed: _isListening
+                                      ? _stopListening
+                                      : _startListening,
                                   icon: Icon(
-                                    _isRecording
-                                        ? Icons.stop
-                                        : _isTranscribing
-                                        ? Icons.hourglass_top
+                                    _isListening
+                                        ? Icons.stop_circle
                                         : Icons.mic,
                                   ),
                                   label: Text(
-                                    _isRecording
-                                        ? 'Stop recording'
-                                        : _isTranscribing
-                                        ? 'Transcribing…'
-                                        : 'Tap to record',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .titleMedium
-                                        ?.copyWith(fontWeight: FontWeight.w700),
+                                    _isListening
+                                        ? 'Stop Recording'
+                                        : 'Tap to Speak',
                                   ),
                                 ),
                               ),
-                              if (_recordingPath != null && !_isRecording) ...[
-                                const SizedBox(height: 10),
-                                Text(
-                                  'Recorded: ${File(_recordingPath!).uri.pathSegments.last}',
-                                  style: Theme.of(context).textTheme.bodySmall
-                                      ?.copyWith(
-                                        color: colorScheme.onSurfaceVariant,
-                                      ),
+                            const SizedBox(height: 16),
+                            SegmentedButton<_ListeningInputMode>(
+                              segments: const <ButtonSegment<_ListeningInputMode>>[
+                                ButtonSegment<_ListeningInputMode>(
+                                  value: _ListeningInputMode.type,
+                                  label: Text('Type'),
+                                  icon: Icon(Icons.keyboard),
+                                ),
+                                ButtonSegment<_ListeningInputMode>(
+                                  value: _ListeningInputMode.speak,
+                                  label: Text('Speak'),
+                                  icon: Icon(Icons.mic),
                                 ),
                               ],
-                            ],
+                              selected: <_ListeningInputMode>{_mode},
+                              onSelectionChanged:
+                                  (Set<_ListeningInputMode> newSelection) {
+                                setState(() {
+                                  _mode = newSelection.first;
+                                });
+                              },
+                            ),
                           ],
                         ),
                       ),
                       const SizedBox(height: 20),
                       Text(
-                        'Your answer',
+                        'Your Answer',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: colorScheme.onSurfaceVariant,
                           fontWeight: FontWeight.w600,
@@ -430,30 +375,12 @@ class _ListeningTestScreenState extends State<ListeningTestScreen> {
                         controller: _answerController,
                         minLines: 3,
                         maxLines: 6,
-                        textInputAction: TextInputAction.newline,
                         decoration: InputDecoration(
-                          hintText: 'Type what you heard…',
-                          filled: true,
-                          fillColor: colorScheme.surface,
+                          hintText: 'Type or speak your answer here...',
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(
-                              color: colorScheme.outlineVariant,
-                            ),
                           ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(
-                              color: colorScheme.outlineVariant,
-                            ),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(
-                              color: colorScheme.primary,
-                              width: 2,
-                            ),
-                          ),
+                          contentPadding: const EdgeInsets.all(12),
                         ),
                       ),
                     ],
@@ -465,108 +392,17 @@ class _ListeningTestScreenState extends State<ListeningTestScreen> {
                 width: double.infinity,
                 height: 56,
                 child: ElevatedButton(
-                  onPressed: _isTranscribing ? null : _handleNext,
-                  style: ElevatedButton.styleFrom(
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
+                  onPressed: _handleNext,
                   child: Text(
                     _currentQuestionIndex == _questions.length - 1
                         ? 'Complete'
                         : 'Next',
+                    style: const TextStyle(fontSize: 16),
                   ),
                 ),
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ModeToggle extends StatelessWidget {
-  const _ModeToggle({required this.mode, required this.onChanged});
-
-  final _ListeningInputMode mode;
-  final ValueChanged<_ListeningInputMode> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _ModeChip(
-            label: 'Speak',
-            icon: Icons.mic,
-            isSelected: mode == _ListeningInputMode.speak,
-            onTap: () => onChanged(_ListeningInputMode.speak),
-          ),
-          _ModeChip(
-            label: 'Type',
-            icon: Icons.keyboard,
-            isSelected: mode == _ListeningInputMode.type,
-            onTap: () => onChanged(_ListeningInputMode.type),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ModeChip extends StatelessWidget {
-  const _ModeChip({
-    required this.label,
-    required this.icon,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  final String label;
-  final IconData icon;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return InkWell(
-      borderRadius: BorderRadius.circular(10),
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? colorScheme.primary : Colors.transparent,
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              size: 18,
-              color: isSelected ? colorScheme.onPrimary : colorScheme.primary,
-            ),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                fontWeight: FontWeight.w700,
-                color: isSelected ? colorScheme.onPrimary : colorScheme.primary,
-              ),
-            ),
-          ],
         ),
       ),
     );

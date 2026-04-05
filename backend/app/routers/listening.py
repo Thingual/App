@@ -1,12 +1,8 @@
-from fastapi import APIRouter, UploadFile, File
-
-from ..services.whisper_service import transcribe_upload
+from fastapi import APIRouter
 
 router = APIRouter(prefix="/assessment/listening", tags=["assessment"])
 
 
-@router.post("/transcribe")
-async def transcribe_listening_audio(file: UploadFile = File(...)):
-    """Transcribe a recorded audio file for the listening assessment."""
-    text = await transcribe_upload(file)
-    return {"text": text}
+# NOTE: Speech-to-text transcription now happens on the client (Flutter app)
+# using native device speech recognition (iOS Speech Framework, Android STT)
+# This keeps the backend lightweight and transcription is faster/more private
