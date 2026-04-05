@@ -6,7 +6,8 @@ import 'package:flutter/services.dart';
 import 'listening_question_model.dart';
 
 class ListeningTestService {
-  static final ListeningTestService _instance = ListeningTestService._internal();
+  static final ListeningTestService _instance =
+      ListeningTestService._internal();
 
   factory ListeningTestService() => _instance;
 

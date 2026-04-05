@@ -84,20 +84,24 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
+    final email = _emailController.text.trim();
+
+    print('🔐 LOGIN: Starting login attempt for $email');
 
     try {
-      await _apiService.login(
-        email: _emailController.text.trim(),
-        password: _passwordController.text,
-      );
+      print('🔐 LOGIN: Calling API service...');
+      await _apiService.login(email: email, password: _passwordController.text);
 
+      print('🔐 LOGIN: API call successful!');
       if (mounted) {
+        print('🔐 LOGIN: Navigating to onboarding screen...');
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (_) => const PostLoginOnboardingScreen()),
         );
       }
     } catch (e) {
+      print('❌ LOGIN FAILED: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),

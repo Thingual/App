@@ -1,36 +1,15 @@
-import 'package:flutter/foundation.dart';
-
 class ApiConstants {
-  /// Base URL for the backend.
+  /// Base URL for the backend - Always use Render backend for all modes
   ///
   /// Priority:
-  /// 1) `--dart-define=API_BASE_URL=...`
-  /// 2) Debug/dev default to local backend (platform-aware)
-  /// 3) Release default to deployed Render backend
+  /// 1) `--dart-define=API_BASE_URL=...` (override)
+  /// 2) Render backend (all modes)
   static String get baseUrl {
     const override = String.fromEnvironment('API_BASE_URL');
     if (override.isNotEmpty) return override;
 
-    if (kReleaseMode) {
-      return 'https://thingual-backend.onrender.com';
-    }
-
-    // Dev defaults
-    if (kIsWeb) return 'http://localhost:8002';
-
-    switch (defaultTargetPlatform) {
-      case TargetPlatform.android:
-        // Android emulator host loopback
-        return 'http://10.0.2.2:8002';
-      case TargetPlatform.iOS:
-        return 'http://localhost:8002';
-      case TargetPlatform.macOS:
-      case TargetPlatform.windows:
-      case TargetPlatform.linux:
-        return 'http://127.0.0.1:8002';
-      case TargetPlatform.fuchsia:
-        return 'http://127.0.0.1:8002';
-    }
+    // Always use Render backend, no distinction between debug/release
+    return 'https://thingual-backend.onrender.com';
   }
 
   // Auth endpoints

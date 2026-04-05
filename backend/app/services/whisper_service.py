@@ -22,7 +22,9 @@ def _load_whisper_model():
     model_name = os.getenv("WHISPER_MODEL", "tiny")
 
     try:
-        return whisper.load_model(model_name)
+        # Load model on CPU to avoid memory issues on Render (512MB limit)
+        # Use fp16=False to reduce memory usage (uses fp32 instead)
+        return whisper.load_model(model_name, device="cpu", in_memory=False)
     except Exception as e:  # pragma: no cover
         raise HTTPException(
             status_code=500,

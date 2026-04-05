@@ -171,21 +171,27 @@ class _ListeningTestScreenState extends State<ListeningTestScreen> {
     setState(() => _isTranscribing = true);
 
     try {
+      print('🎤 Starting transcription for file: $filePath');
       final text = await _apiService.transcribeListeningAudio(
         filePath: filePath,
         filename: 'listening.m4a',
       );
 
+      print('✅ Transcription successful: $text');
       if (!mounted) return;
       setState(() {
         _answerController.text = text.trim();
         _isTranscribing = false;
       });
     } catch (e) {
+      print('❌ Transcription failed: $e');
       if (!mounted) return;
       setState(() => _isTranscribing = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Transcription failed: $e')),
+        SnackBar(
+          content: Text('Transcription failed: $e'),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }
@@ -201,7 +207,10 @@ class _ListeningTestScreenState extends State<ListeningTestScreen> {
 
     final expected = _currentQuestion.sentence;
     final responseTime = _stopwatch.elapsedMilliseconds / 1000.0;
-    final similarity = listeningSimilarityScore(expected: expected, actual: answer);
+    final similarity = listeningSimilarityScore(
+      expected: expected,
+      actual: answer,
+    );
 
     const correctThreshold = 0.85;
     final isCorrect = similarity >= correctThreshold;
@@ -270,15 +279,15 @@ class _ListeningTestScreenState extends State<ListeningTestScreen> {
               Text(
                 'Listening Assessment',
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
+                  fontWeight: FontWeight.w700,
+                ),
               ),
               const SizedBox(height: 8),
               Text(
                 'Question ${_currentQuestionIndex + 1} of ${_questions.length}',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                    ),
+                  color: colorScheme.onSurfaceVariant,
+                ),
               ),
               const SizedBox(height: 24),
               ClipRRect(
@@ -287,7 +296,9 @@ class _ListeningTestScreenState extends State<ListeningTestScreen> {
                   value: (_currentQuestionIndex + 1) / _questions.length,
                   minHeight: 4,
                   backgroundColor: colorScheme.surfaceContainerHighest,
-                  valueColor: AlwaysStoppedAnimation<Color>(colorScheme.primary),
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    colorScheme.primary,
+                  ),
                 ),
               ),
               const SizedBox(height: 24),
@@ -307,18 +318,16 @@ class _ListeningTestScreenState extends State<ListeningTestScreen> {
                           children: [
                             Text(
                               'Listen and write what you hear',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .titleLarge
+                              style: Theme.of(context).textTheme.titleLarge
                                   ?.copyWith(fontWeight: FontWeight.w700),
                             ),
                             const SizedBox(height: 6),
                             Text(
                               'You can type it, or repeat it out loud.',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodyMedium
-                                  ?.copyWith(color: colorScheme.onSurfaceVariant),
+                              style: Theme.of(context).textTheme.bodyMedium
+                                  ?.copyWith(
+                                    color: colorScheme.onSurfaceVariant,
+                                  ),
                             ),
                             const SizedBox(height: 16),
                             Row(
@@ -336,7 +345,9 @@ class _ListeningTestScreenState extends State<ListeningTestScreen> {
                                       ),
                                     ),
                                     icon: Icon(
-                                      _isSpeaking ? Icons.stop : Icons.volume_up,
+                                      _isSpeaking
+                                          ? Icons.stop
+                                          : Icons.volume_up,
                                       color: colorScheme.primary,
                                     ),
                                     label: Text(
@@ -344,7 +355,9 @@ class _ListeningTestScreenState extends State<ListeningTestScreen> {
                                       style: Theme.of(context)
                                           .textTheme
                                           .titleMedium
-                                          ?.copyWith(fontWeight: FontWeight.w700),
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.w700,
+                                          ),
                                     ),
                                   ),
                                 ),
@@ -374,15 +387,15 @@ class _ListeningTestScreenState extends State<ListeningTestScreen> {
                                     _isRecording
                                         ? Icons.stop
                                         : _isTranscribing
-                                            ? Icons.hourglass_top
-                                            : Icons.mic,
+                                        ? Icons.hourglass_top
+                                        : Icons.mic,
                                   ),
                                   label: Text(
                                     _isRecording
                                         ? 'Stop recording'
                                         : _isTranscribing
-                                            ? 'Transcribing…'
-                                            : 'Tap to record',
+                                        ? 'Transcribing…'
+                                        : 'Tap to record',
                                     style: Theme.of(context)
                                         .textTheme
                                         .titleMedium
@@ -394,7 +407,8 @@ class _ListeningTestScreenState extends State<ListeningTestScreen> {
                                 const SizedBox(height: 10),
                                 Text(
                                   'Recorded: ${File(_recordingPath!).uri.pathSegments.last}',
-                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  style: Theme.of(context).textTheme.bodySmall
+                                      ?.copyWith(
                                         color: colorScheme.onSurfaceVariant,
                                       ),
                                 ),
@@ -407,9 +421,9 @@ class _ListeningTestScreenState extends State<ListeningTestScreen> {
                       Text(
                         'Your answer',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: colorScheme.onSurfaceVariant,
-                              fontWeight: FontWeight.w600,
-                            ),
+                          color: colorScheme.onSurfaceVariant,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                       const SizedBox(height: 10),
                       TextField(
@@ -423,15 +437,22 @@ class _ListeningTestScreenState extends State<ListeningTestScreen> {
                           fillColor: colorScheme.surface,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: colorScheme.outlineVariant),
+                            borderSide: BorderSide(
+                              color: colorScheme.outlineVariant,
+                            ),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: colorScheme.outlineVariant),
+                            borderSide: BorderSide(
+                              color: colorScheme.outlineVariant,
+                            ),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: colorScheme.primary, width: 2),
+                            borderSide: BorderSide(
+                              color: colorScheme.primary,
+                              width: 2,
+                            ),
                           ),
                         ),
                       ),
@@ -541,10 +562,9 @@ class _ModeChip extends StatelessWidget {
             Text(
               label,
               style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color:
-                        isSelected ? colorScheme.onPrimary : colorScheme.primary,
-                  ),
+                fontWeight: FontWeight.w700,
+                color: isSelected ? colorScheme.onPrimary : colorScheme.primary,
+              ),
             ),
           ],
         ),
