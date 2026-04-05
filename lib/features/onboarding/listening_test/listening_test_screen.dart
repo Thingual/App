@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
 
 import '../assessment_controller/assessment_controller.dart';
 import '../assessment_controller/assessment_result_model.dart';
@@ -27,6 +28,7 @@ class _ListeningTestScreenState extends State<ListeningTestScreen> {
   int _currentQuestionIndex = 0;
 
   final FlutterTts _tts = FlutterTts();
+  final stt.SpeechToText _speechToText = stt.SpeechToText();
   final TextEditingController _answerController = TextEditingController();
 
   late Stopwatch _stopwatch;
@@ -34,6 +36,7 @@ class _ListeningTestScreenState extends State<ListeningTestScreen> {
   bool _isLoading = true;
   String? _error;
   bool _isSpeaking = false;
+  bool _isListening = false;
 
   @override
   void initState() {
@@ -41,6 +44,7 @@ class _ListeningTestScreenState extends State<ListeningTestScreen> {
     _service = ListeningTestService();
     _stopwatch = Stopwatch();
     _initTts();
+    _initSpeechToText();
     _loadQuestions();
   }
 
@@ -60,6 +64,25 @@ class _ListeningTestScreenState extends State<ListeningTestScreen> {
     _tts.setErrorHandler((_) {
       if (mounted) setState(() => _isSpeaking = false);
     });
+  }
+
+  Future<void> _initSpeechToText() async {
+    try {
+      await _speechToText.initialize(
+        onError: (error) {
+          print('🎤 STT error: $error');
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Speech error: $error')),
+            );
+          }
+        },
+        onStatus: (status) => print('🎤 STT status: $status'),
+      );
+      print('✅ Speech-to-text initialized');
+    } catch (e) {
+      print('❌ STT init failed: $e');
+    }
   }
 
   Future<void> _loadQuestions() async {
@@ -86,6 +109,49 @@ class _ListeningTestScreenState extends State<ListeningTestScreen> {
       return;
     }
     await _tts.speak(_currentQuestion.sentence);
+  }
+
+  Future<void> _startListening() async {
+    if (_isListening) return;
+
+    if (!_speechToText.isAvailable) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('Speech-to-text not available on this device')),
+        );
+      }
+      return;
+    }
+
+    setState(() => _isListening = true);
+
+    try {
+      await _speechToText.listen(
+        onResult: (result) {
+          print('🎤 Heard: ${result.recognizedWords}');
+          setState(() {
+            _answerController.text = result.recognizedWords;
+          });
+        },
+        listenFor: const Duration(seconds: 15),
+        pauseFor: const Duration(seconds: 3),
+        partialResults: true,
+      );
+    } catch (e) {
+      print('❌ Listen error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _stopListening() async {
+    if (!_isListening) return;
+    await _speechToText.stop();
+    setState(() => _isListening = false);
   }
 
   void _handleNext() {
@@ -136,6 +202,7 @@ class _ListeningTestScreenState extends State<ListeningTestScreen> {
   @override
   void dispose() {
     _tts.stop();
+    _speechToText.cancel();
     _answerController.dispose();
     _stopwatch.stop();
     super.dispose();
@@ -155,9 +222,7 @@ class _ListeningTestScreenState extends State<ListeningTestScreen> {
 
     if (_error != null) {
       return Scaffold(
-        body: Center(
-          child: Text(_error!),
-        ),
+        body: Center(child: Text(_error!)),
       );
     }
 
@@ -209,32 +274,51 @@ class _ListeningTestScreenState extends State<ListeningTestScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Listen carefully',
+                              'Listen and respond',
                               style: Theme.of(context).textTheme.titleLarge
                                   ?.copyWith(fontWeight: FontWeight.w700),
                             ),
                             const SizedBox(height: 6),
                             Text(
-                              'Click the button below to hear the audio. Then type what you hear.',
+                              'Play the audio, then speak your answer or type it below.',
                               style: Theme.of(context).textTheme.bodyMedium
                                   ?.copyWith(
                                     color: colorScheme.onSurfaceVariant,
                                   ),
                             ),
                             const SizedBox(height: 16),
-                            SizedBox(
-                              width: double.infinity,
-                              child: OutlinedButton.icon(
-                                onPressed: _playPrompt,
-                                icon: Icon(
-                                  _isSpeaking
-                                      ? Icons.stop_circle
-                                      : Icons.play_circle_outline,
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: OutlinedButton.icon(
+                                    onPressed: _playPrompt,
+                                    icon: Icon(
+                                      _isSpeaking
+                                          ? Icons.stop_circle
+                                          : Icons.play_circle_outline,
+                                    ),
+                                    label: Text(
+                                      _isSpeaking ? 'Stop' : 'Play Audio',
+                                    ),
+                                  ),
                                 ),
-                                label: Text(
-                                  _isSpeaking ? 'Stop' : 'Play Audio',
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: ElevatedButton.icon(
+                                    onPressed: _isListening
+                                        ? _stopListening
+                                        : _startListening,
+                                    icon: Icon(
+                                      _isListening
+                                          ? Icons.stop_circle
+                                          : Icons.mic,
+                                    ),
+                                    label: Text(
+                                      _isListening ? 'Stop' : 'Speak',
+                                    ),
+                                  ),
                                 ),
-                              ),
+                              ],
                             ),
                           ],
                         ),
@@ -253,7 +337,7 @@ class _ListeningTestScreenState extends State<ListeningTestScreen> {
                         minLines: 3,
                         maxLines: 6,
                         decoration: InputDecoration(
-                          hintText: 'Type what you heard here...',
+                          hintText: 'Your speech will appear here, or type manually...',
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
