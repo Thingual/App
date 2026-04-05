@@ -1,15 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
-import 'package:permission_handler/permission_handler.dart';
-import 'package:speech_to_text/speech_to_text.dart' as stt;
 
 import '../assessment_controller/assessment_controller.dart';
 import '../assessment_controller/assessment_result_model.dart';
 import 'listening_question_model.dart';
 import 'listening_scoring.dart';
 import 'listening_test_service.dart';
-
-enum _ListeningInputMode { speak, type }
 
 class ListeningTestScreen extends StatefulWidget {
   final AssessmentController assessmentController;
@@ -31,17 +27,13 @@ class _ListeningTestScreenState extends State<ListeningTestScreen> {
   int _currentQuestionIndex = 0;
 
   final FlutterTts _tts = FlutterTts();
-  final stt.SpeechToText _speechToText = stt.SpeechToText();
-
   final TextEditingController _answerController = TextEditingController();
-  _ListeningInputMode _mode = _ListeningInputMode.type;
 
   late Stopwatch _stopwatch;
 
   bool _isLoading = true;
   String? _error;
   bool _isSpeaking = false;
-  bool _isListening = false;
 
   @override
   void initState() {
@@ -49,7 +41,6 @@ class _ListeningTestScreenState extends State<ListeningTestScreen> {
     _service = ListeningTestService();
     _stopwatch = Stopwatch();
     _initTts();
-    _initSpeechToText();
     _loadQuestions();
   }
 
@@ -69,24 +60,6 @@ class _ListeningTestScreenState extends State<ListeningTestScreen> {
     _tts.setErrorHandler((_) {
       if (mounted) setState(() => _isSpeaking = false);
     });
-  }
-
-  Future<void> _initSpeechToText() async {
-    try {
-      await _speechToText.initialize(
-        onError: (error) {
-          print('🎤 Speech-to-text error: $error');
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Speech error: $error')),
-            );
-          }
-        },
-        onStatus: (status) => print('🎤 Speech status: $status'),
-      );
-    } catch (e) {
-      print('❌ Speech-to-text init failed: $e');
-    }
   }
 
   Future<void> _loadQuestions() async {
@@ -113,59 +86,6 @@ class _ListeningTestScreenState extends State<ListeningTestScreen> {
       return;
     }
     await _tts.speak(_currentQuestion.sentence);
-  }
-
-  Future<void> _startListening() async {
-    if (_isListening) return;
-
-    final permission = await Permission.microphone.request();
-    if (!permission.isGranted) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Microphone permission required')),
-        );
-      }
-      return;
-    }
-
-    if (!_speechToText.isAvailable) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Speech-to-text not available')),
-        );
-      }
-      return;
-    }
-
-    setState(() => _isListening = true);
-
-    try {
-      await _speechToText.listen(
-        onResult: (result) {
-          print('🎤 Heard: ${result.recognizedWords}');
-          setState(() {
-            _answerController.text = result.recognizedWords;
-          });
-        },
-        listenFor: const Duration(seconds: 10),
-        pauseFor: const Duration(seconds: 3),
-        partialResults: true,
-        onSoundLevelChange: (level) => print('🔊 Sound level: $level'),
-      );
-    } catch (e) {
-      print('❌ Listen error: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
-      }
-    }
-  }
-
-  Future<void> _stopListening() async {
-    if (!_isListening) return;
-    await _speechToText.stop();
-    setState(() => _isListening = false);
   }
 
   void _handleNext() {
@@ -216,7 +136,6 @@ class _ListeningTestScreenState extends State<ListeningTestScreen> {
   @override
   void dispose() {
     _tts.stop();
-    _speechToText.cancel();
     _answerController.dispose();
     _stopwatch.stop();
     super.dispose();
@@ -290,13 +209,13 @@ class _ListeningTestScreenState extends State<ListeningTestScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Listen and write what you hear',
+                              'Listen carefully',
                               style: Theme.of(context).textTheme.titleLarge
                                   ?.copyWith(fontWeight: FontWeight.w700),
                             ),
                             const SizedBox(height: 6),
                             Text(
-                              'Play the audio, then type your response or use speech recognition.',
+                              'Click the button below to hear the audio. Then type what you hear.',
                               style: Theme.of(context).textTheme.bodyMedium
                                   ?.copyWith(
                                     color: colorScheme.onSurfaceVariant,
@@ -317,48 +236,6 @@ class _ListeningTestScreenState extends State<ListeningTestScreen> {
                                 ),
                               ),
                             ),
-                            const SizedBox(height: 16),
-                            if (_mode == _ListeningInputMode.speak)
-                              SizedBox(
-                                width: double.infinity,
-                                child: ElevatedButton.icon(
-                                  onPressed: _isListening
-                                      ? _stopListening
-                                      : _startListening,
-                                  icon: Icon(
-                                    _isListening
-                                        ? Icons.stop_circle
-                                        : Icons.mic,
-                                  ),
-                                  label: Text(
-                                    _isListening
-                                        ? 'Stop Recording'
-                                        : 'Tap to Speak',
-                                  ),
-                                ),
-                              ),
-                            const SizedBox(height: 16),
-                            SegmentedButton<_ListeningInputMode>(
-                              segments: const <ButtonSegment<_ListeningInputMode>>[
-                                ButtonSegment<_ListeningInputMode>(
-                                  value: _ListeningInputMode.type,
-                                  label: Text('Type'),
-                                  icon: Icon(Icons.keyboard),
-                                ),
-                                ButtonSegment<_ListeningInputMode>(
-                                  value: _ListeningInputMode.speak,
-                                  label: Text('Speak'),
-                                  icon: Icon(Icons.mic),
-                                ),
-                              ],
-                              selected: <_ListeningInputMode>{_mode},
-                              onSelectionChanged:
-                                  (Set<_ListeningInputMode> newSelection) {
-                                setState(() {
-                                  _mode = newSelection.first;
-                                });
-                              },
-                            ),
                           ],
                         ),
                       ),
@@ -376,7 +253,7 @@ class _ListeningTestScreenState extends State<ListeningTestScreen> {
                         minLines: 3,
                         maxLines: 6,
                         decoration: InputDecoration(
-                          hintText: 'Type or speak your answer here...',
+                          hintText: 'Type what you heard here...',
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
