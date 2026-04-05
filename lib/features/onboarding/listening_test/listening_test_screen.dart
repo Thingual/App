@@ -72,9 +72,9 @@ class _ListeningTestScreenState extends State<ListeningTestScreen> {
         onError: (error) {
           print('🎤 STT error: $error');
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Speech error: $error')),
-            );
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text('Speech error: $error')));
           }
         },
         onStatus: (status) => print('🎤 STT status: $status'),
@@ -118,7 +118,8 @@ class _ListeningTestScreenState extends State<ListeningTestScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-              content: Text('Speech-to-text not available on this device')),
+            content: Text('Speech-to-text not available on this device'),
+          ),
         );
       }
       return;
@@ -141,9 +142,9 @@ class _ListeningTestScreenState extends State<ListeningTestScreen> {
     } catch (e) {
       print('❌ Listen error: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     }
   }
@@ -221,9 +222,7 @@ class _ListeningTestScreenState extends State<ListeningTestScreen> {
     }
 
     if (_error != null) {
-      return Scaffold(
-        body: Center(child: Text(_error!)),
-      );
+      return Scaffold(body: Center(child: Text(_error!)));
     }
 
     return Scaffold(
@@ -337,7 +336,8 @@ class _ListeningTestScreenState extends State<ListeningTestScreen> {
                         minLines: 3,
                         maxLines: 6,
                         decoration: InputDecoration(
-                          hintText: 'Your speech will appear here, or type manually...',
+                          hintText:
+                              'Your speech will appear here, or type manually...',
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
