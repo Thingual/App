@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import '../models/picture_model.dart';
 
@@ -238,17 +239,11 @@ class LLMServiceImpl extends LLMService {
     }
   }
 
-  Future<dynamic> _getModelFile() async {
-    // Using basic file access since we're local
+  Future<File> _getModelFile() async {
     final modelPath = _modelPath;
     if (modelPath == null) throw StateError('Model path not set');
-    // Return a mock file object (actual implementation would use io.File)
-    return {'path': modelPath, 'exists': _checkFileExists};
-  }
-
-  bool _checkFileExists() {
-    // This would check if the file actually exists
-    return false;
+    // Return actual File object for proper file checking
+    return File(modelPath);
   }
 
   String _buildEvaluationPrompt(String originalPrompt) {

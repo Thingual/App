@@ -49,11 +49,10 @@ dependencies:
   record: ^6.1.1
   permission_handler: ^11.4.0
   path_provider: ^2.1.5
+  speech_to_text: ^7.3.0
   
   # Local LLM inference - runs GGUF models on device
-  llama_cpp_dart: ^0.2.14
-  path_provider: ^2.1.5
-  speech_to_text: ^7.3.0
+  llama_cpp_dart: ^0.2.2
 
 dev_dependencies:
   flutter_test:
