@@ -812,15 +812,17 @@ class _ModelDownloadScreenState extends State<_ModelDownloadScreen> {
     if (_isDownloading) return;
 
     setState(() => _isDownloading = true);
+    
+    // Listen to real download progress from ModelManager
+    widget.modelManager.addListener(_updateDownloadProgress);
+    
     try {
-      // Simulate download with progress updates
-      for (int i = 0; i <= 100; i += 10) {
-        if (!mounted) return;
-        setState(() => _downloadProgress = i / 100.0);
-        await Future.delayed(const Duration(milliseconds: 200));
-      }
-
+      debugPrint('[_ModelDownloadScreen] Starting real model download...');
+      debugPrint('[_ModelDownloadScreen] Model URL: ${ModelManager.modelDownloadUrl}');
+      debugPrint('[_ModelDownloadScreen] Listening to real download progress...');
+      
       await widget.modelManager.downloadModel();
+      
       if (mounted) {
         setState(() => _isDownloading = false);
         widget.onCompleted();
@@ -832,7 +834,32 @@ class _ModelDownloadScreenState extends State<_ModelDownloadScreen> {
           context,
         ).showSnackBar(SnackBar(content: Text('Download failed: $e')));
       }
+    } finally {
+      // Remove listener when done
+      widget.modelManager.removeListener(_updateDownloadProgress);
     }
+  }
+
+  void _updateDownloadProgress() {
+    if (mounted) {
+      setState(() {
+        _downloadProgress = widget.modelManager.downloadProgress;
+        
+        // Log progress at key milestones
+        final percentage = (_downloadProgress * 100).toInt();
+        if (percentage % 10 == 0 || percentage == 100) {
+          debugPrint(
+            '[_ModelDownloadScreen] Download progress: $percentage%',
+          );
+        }
+      });
+    }
+  }
+  
+  @override
+  void dispose() {
+    widget.modelManager.removeListener(_updateDownloadProgress);
+    super.dispose();
   }
 
   @override

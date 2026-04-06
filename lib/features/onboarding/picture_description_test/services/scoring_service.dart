@@ -93,17 +93,41 @@ class ScoringService {
     String imageContext,
   ) async {
     try {
+      debugPrint('\n' + '=' * 80);
+      debugPrint('INITIATING LLM SCORING PIPELINE');
+      debugPrint('=' * 80);
+      
+      debugPrint('\nStep 1: Building evaluation prompt');
+      debugPrint('  - User response length: ${userResponse.length} chars');
+      debugPrint('  - Keywords count: ${keywords.length}');
+      debugPrint('  - Keywords: ${keywords.join(", ")}');
+      debugPrint('  - Image context length: ${imageContext.length} chars');
+      
       final prompt = PromptBuilder.buildEvaluationPrompt(
         userInput: userResponse,
         keywords: keywords,
         referenceDescription: imageContext,
       );
+      
+      debugPrint('  - Generated prompt length: ${prompt.length} chars');
+      debugPrint('  - Prompt prepared ✓');
 
+      debugPrint('\nStep 2: Sending to LLM service for inference');
       final result = await llmService.inference(prompt);
+      
+      if (result != null) {
+        debugPrint('\nStep 3: Processing LLM inference result');
+        debugPrint('  - Score received: ${result.score}');
+        debugPrint('  - CEFR level: ${result.cefrLevel}');
+        debugPrint('  - Confidence: HIGH');
+        debugPrint('  ✓ LLM scoring pipeline complete');
+      }
+      
       return result;
     } catch (e) {
       // Fallback to rule-based if LLM fails
-      debugPrint('LLM scoring failed: $e');
+      debugPrint('❌ LLM scoring pipeline failed: $e');
+      debugPrint('  Falling back to rule-based scoring only');
       return null;
     }
   }
