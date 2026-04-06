@@ -40,7 +40,7 @@ class _PictureDescriptionTestScreenState
   String _submitButtonText = 'Submit';
 
   final _datasetService = PictureDatasetService();
-  late final _llmService = LLMServiceStub();
+  late final _llmService = LLMServiceImpl();
   late final _scoringService = ScoringService(
     ruleEngine: RuleEngine(),
     llmService: _llmService,

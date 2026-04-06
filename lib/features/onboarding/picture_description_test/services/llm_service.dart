@@ -1,20 +1,21 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:dio/dio.dart';
 import '../models/picture_model.dart';
 
-/// Service for running LLM inference on-device
+/// Service for running LLM inference via backend API
 ///
 /// This service:
-/// - Loads GGUF models via native bridge (stub for now)
-/// - Sends prompts to the model
+/// - Communicates with Python backend for LLM inference
+/// - Uses llama-cpp-python for GGUF model execution
+/// - Sends requests via FastAPI endpoint
 /// - Parses JSON responses safely
-/// - Runs inference in isolates to avoid blocking UI
 abstract class LLMService {
   /// Check if the service is initialized
   bool get isInitialized;
 
-  /// Initialize the LLM service with a model path
-  Future<void> initialize(String modelPath);
+  /// Initialize the LLM service
+  Future<void> initialize(String? modelPath);
 
   /// Run inference on the given prompt
   /// Returns null if inference fails
@@ -24,21 +25,49 @@ abstract class LLMService {
   Future<void> shutdown();
 }
 
-/// Stub implementation of LLMService for development
-/// In production, this would use native FFI to call llama.cpp
-class LLMServiceStub extends LLMService {
+/// Backend-based LLM Service implementation
+/// Communicates with Python backend for actual model inference
+class LLMServiceImpl extends LLMService {
   bool _initialized = false;
+  final Dio _dio = Dio();
+  String _backendUrl = 'http://localhost:8000';
 
   @override
   bool get isInitialized => _initialized;
 
   @override
-  Future<void> initialize(String modelPath) async {
-    // In production, this would:
-    // 1. Load the GGUF model using FFI
-    // 2. Initialize the inference context
-    _initialized = true;
-    await Future.delayed(const Duration(milliseconds: 100));
+  Future<void> initialize(String? modelPath) async {
+    // Get backend URL from environment or use default
+    _backendUrl = _getBackendUrl();
+    
+    debugPrint('[LLMService] Initializing with backend: $_backendUrl');
+    
+    try {
+      // Check if backend is running and LLM is ready
+      final response = await _dio.get('$_backendUrl/api/llm/status').timeout(
+        const Duration(seconds: 5),
+        onTimeout: () {
+          throw TimeoutException('Backend not responding');
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = response.data as Map<String, dynamic>;
+        _initialized = data['initialized'] ?? data['ready'] ?? false;
+        
+        if (_initialized) {
+          debugPrint('[LLMService] ✓ Backend LLM service ready');
+        } else {
+          debugPrint('[LLMService] ⚠ Backend LLM not yet initialized');
+          debugPrint('[LLMService] Model will initialize on first use');
+          _initialized = true; // Mark as initialized to allow inference
+        }
+      }
+    } catch (e) {
+      debugPrint('[LLMService] Warning: Backend not available yet');
+      debugPrint('[LLMService] Will retry on first inference: $e');
+      _initialized = true; // Still mark as initialized to allow retry
+    }
   }
 
   @override
@@ -55,54 +84,62 @@ class LLMServiceStub extends LLMService {
       debugPrint('[LLMService] Timestamp: ${DateTime.now().toIso8601String()}');
       debugPrint('=' * 80);
 
-      // Step 1: Prepare prompt
-      debugPrint('\n[LLMService] STEP 1: PREPARING PROMPT');
-      debugPrint('[LLMService]   Prompt length: ${prompt.length} characters');
-      debugPrint('[LLMService]   First 100 chars: ${prompt.substring(0, (prompt.length < 100 ? prompt.length : 100))}...');
-
-      // Step 2: Tokenization (simulation)
-      debugPrint('\n[LLMService] STEP 2: TOKENIZATION');
-      final estimatedTokens = (prompt.length / 4).round(); // Rough estimate
-      debugPrint('[LLMService]   Estimated tokens: ~$estimatedTokens');
-      debugPrint('[LLMService]   Max context window: 2048 tokens');
-      debugPrint('[LLMService]   Token allocation: Safe ✓');
-
-      // Step 3: Load model
-      debugPrint('\n[LLMService] STEP 3: LOADING MODEL');
-      debugPrint('[LLMService]   Model: TinyLlama-1.1B-GGUF');
-      debugPrint('[LLMService]   Model size: ~490 MB');
-      debugPrint('[LLMService]   Quantization: Q4 (4-bit)');
-      debugPrint('[LLMService]   Checking model file...');
-      // In actual implementation, this would load the GGUF file
-      debugPrint('[LLMService]   ✓ Model loaded successfully');
-
-      // Step 4: Run inference
-      debugPrint('\n[LLMService] STEP 4: RUNNING INFERENCE');
-      debugPrint('[LLMService]   Inference mode: Non-interactive (batch)');
-      debugPrint('[LLMService]   Temperature: 0.7');
-      debugPrint('[LLMService]   Max tokens: 256');
-      debugPrint('[LLMService]   Starting token generation...');
+      // Extract user response from prompt for logging
+      final userInput = _extractUserInput(prompt);
       
-      // In actual implementation, this would call the model's inference method
-      // For now, we simulate it with a very short delay (just for async operation)
-      await Future.delayed(const Duration(milliseconds: 50));
-      
-      debugPrint('[LLMService]   Tokens generated: ~80');
-      debugPrint('[LLMService]   ✓ Inference completed');
+      debugPrint('\n[LLMService] STEP 1: PREPARING REQUEST');
+      debugPrint('[LLMService]   Backend URL: $_backendUrl/api/llm/evaluate');
+      debugPrint('[LLMService]   Request type: POST');
+      debugPrint('[LLMService]   User input length: ${userInput.length} characters');
 
-      // Step 5: Parse output
-      debugPrint('\n[LLMService] STEP 5: PARSING MODEL OUTPUT');
-      debugPrint('[LLMService]   Raw output length: ~320 characters');
-      debugPrint('[LLMService]   Extracting structured evaluation...');
-      debugPrint('[LLMService]   ✓ JSON parsing successful');
+      // Step 2: Build backend request
+      debugPrint('\n[LLMService] STEP 2: BUILDING BACKEND REQUEST');
+      final requestData = {
+        'user_response': userInput,
+        'keywords': _extractKeywords(prompt),
+        'reference_description': _extractReference(prompt),
+      };
+      debugPrint('[LLMService]   Payload size: ${jsonEncode(requestData).length} bytes');
+      debugPrint('[LLMService]   ✓ Request prepared');
 
-      // Step 6: Score extraction
-      debugPrint('\n[LLMService] STEP 6: SCORE EXTRACTION');
+      // Step 3: Send to backend
+      debugPrint('\n[LLMService] STEP 3: SENDING TO BACKEND');
+      debugPrint('[LLMService]   Connecting to backend...');
       
-      // This is where real model output would be processed
-      // Currently returning a reasonable result based on model behavior
-      final score = 75.0; // Would come from model output
-      final cefrLevel = 'B1'; // Would come from model output
+      final response = await _dio.post(
+        '$_backendUrl/api/llm/evaluate',
+        data: requestData,
+        options: Options(
+          contentType: Headers.jsonContentType,
+          receiveTimeout: const Duration(minutes: 5),
+          sendTimeout: const Duration(seconds: 30),
+        ),
+      ).timeout(
+        const Duration(minutes: 5),
+        onTimeout: () {
+          throw TimeoutException('Backend inference timeout (>5 mins)');
+        },
+      );
+
+      debugPrint('[LLMService]   ✓ Response received (${response.statusCode})');
+
+      // Step 4: Parse response
+      debugPrint('\n[LLMService] STEP 4: PARSING BACKEND RESPONSE');
+      if (response.statusCode != 200) {
+        throw Exception('Backend returned ${response.statusCode}');
+      }
+
+      final data = response.data as Map<String, dynamic>;
+      debugPrint('[LLMService]   Response type: JSON');
+      debugPrint('[LLMService]   Parsing evaluation result...');
+      debugPrint('[LLMService]   ✓ JSON parsed successfully');
+
+      // Step 5: Extract score
+      debugPrint('\n[LLMService] STEP 5: EXTRACTING SCORES');
+      final score = (data['score'] as num).toDouble();
+      final cefrLevel = data['cefr_level'] as String;
+      final breakdown = data['breakdown'] as Map<String, dynamic>;
+      final feedback = data['feedback'] as String;
       
       debugPrint('[LLMService]   LLM Score: $score/100');
       debugPrint('[LLMService]   CEFR Level: $cefrLevel');
@@ -110,38 +147,45 @@ class LLMServiceStub extends LLMService {
 
       stopwatch.stop();
 
-      // Step 7: Final result
+      // Step 6: Build result object
+      debugPrint('\n[LLMService] STEP 6: BUILDING RESULT OBJECT');
       final result = LlmScoringResult(
         score: score,
         cefrLevel: cefrLevel,
         breakdown: ScoreBreakdown(
-          grammar: 18,
-          vocabulary: 19,
-          accuracy: 20,
-          detail: 18,
+          grammar: ((breakdown['grammar'] as num).toDouble()),
+          vocabulary: ((breakdown['vocabulary'] as num).toDouble()),
+          accuracy: ((breakdown['accuracy'] as num).toDouble()),
+          detail: ((breakdown['detail'] as num).toDouble()),
         ),
-        feedback: 'Good description with clear details.',
+        feedback: feedback,
         inferenceTime: stopwatch.elapsedMilliseconds,
       );
+      debugPrint('[LLMService]   ✓ Result object created');
 
-      debugPrint('\n[LLMService] STEP 7: FINAL RESULT');
+      // Step 7: Final summary
+      debugPrint('\n[LLMService] STEP 7: INFERENCE COMPLETE');
       debugPrint('[LLMService]   Score breakdown:');
       debugPrint('[LLMService]     - Grammar: ${result.breakdown.grammar}');
       debugPrint('[LLMService]     - Vocabulary: ${result.breakdown.vocabulary}');
       debugPrint('[LLMService]     - Accuracy: ${result.breakdown.accuracy}');
       debugPrint('[LLMService]     - Detail: ${result.breakdown.detail}');
       debugPrint('[LLMService]   Feedback: ${result.feedback}');
-      debugPrint('[LLMService]   Total inference time: ${result.inferenceTime}ms');
+      debugPrint('[LLMService]   Backend processing time: ${stopwatch.elapsedMilliseconds}ms');
 
       debugPrint('\n' + '=' * 80);
       debugPrint('[LLMService] ========== LLM INFERENCE COMPLETE ==========');
       debugPrint('[LLMService] Status: SUCCESS ✓');
+      debugPrint('[LLMService] Source: Python Backend (llama-cpp-python)');
       debugPrint('=' * 80 + '\n');
 
       return result;
     } catch (e) {
-      debugPrint('[LLMService] ❌ INFERENCE ERROR: $e');
+      debugPrint('\n[LLMService] ❌ INFERENCE ERROR: $e');
       debugPrint('[LLMService] Stack trace: ${e.toString()}');
+      debugPrint('[LLMService] Attempting to recover...\n');
+      
+      // Return null to allow fallback to rule-based scoring
       return null;
     }
   }
@@ -149,6 +193,42 @@ class LLMServiceStub extends LLMService {
   @override
   Future<void> shutdown() async {
     _initialized = false;
+    _dio.close(force: true);
+  }
+
+  String _getBackendUrl() {
+    // Check for environment variable first
+    final envUrl = const String.fromEnvironment('BACKEND_URL', defaultValue: '');
+    if (envUrl.isNotEmpty) {
+      return envUrl;
+    }
+    
+    // Default to localhost for development
+    return 'http://localhost:8000';
+  }
+
+  String _extractUserInput(String prompt) {
+    // Extract user's description from the prompt
+    final match = RegExp(r"User's description:\s*(.*?)(?=Evaluate|$)", dotAll: true)
+        .firstMatch(prompt);
+    return match?.group(1)?.trim() ?? '';
+  }
+
+  List<String> _extractKeywords(String prompt) {
+    // Extract keywords from the prompt
+    final match = RegExp(r'Key elements.*?:\s*(.*?)(?=User)', dotAll: true)
+        .firstMatch(prompt);
+    if (match == null) return [];
+    
+    final keywordsStr = match.group(1) ?? '';
+    return keywordsStr.split(RegExp(r'[,;]\s*')).map((k) => k.trim()).toList();
+  }
+
+  String _extractReference(String prompt) {
+    // Extract reference description from the prompt
+    final match = RegExp(r'Image context.*?:\s*(.*?)(?=Key elements)', dotAll: true)
+        .firstMatch(prompt);
+    return match?.group(1)?.trim() ?? '';
   }
 }
 
@@ -166,7 +246,7 @@ Evaluate the user's description of an image based on the following criteria:
 Return ONLY a valid JSON response with this exact structure:
 {
   "score": <number 0-100>,
-  "level": "<A1|A2|B1|B2|C1>",
+  "cefr_level": "<A1|A2|B1|B2|C1>",
   "breakdown": {
     "grammar": <0-25>,
     "vocabulary": <0-25>,
@@ -208,7 +288,7 @@ Evaluate and respond with JSON only:''';
 
       // Validate required fields
       if (!parsed.containsKey('score') ||
-          !parsed.containsKey('level') ||
+          !parsed.containsKey('cefr_level') ||
           !parsed.containsKey('breakdown') ||
           !parsed.containsKey('feedback')) {
         return null;
@@ -225,5 +305,5 @@ Evaluate and respond with JSON only:''';
 // Dart's debugPrint for development logging
 void debugPrint(String message) {
   // ignore: avoid_print
-  print('[LLMService] $message');
+  print(message);
 }
