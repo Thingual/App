@@ -82,7 +82,9 @@ class LLMServiceImpl extends LLMService {
       final stopwatch = Stopwatch()..start();
 
       debugPrint('=' * 80);
-      debugPrint('[LLMService] ========== LOCAL LLM INFERENCE START ==========');
+      debugPrint(
+        '[LLMService] ========== LOCAL LLM INFERENCE START ==========',
+      );
       debugPrint('[LLMService] Timestamp: ${DateTime.now().toIso8601String()}');
       debugPrint('[LLMService] Runtime: llama.cpp (LOCAL DEVICE)');
       debugPrint('=' * 80);
@@ -93,13 +95,17 @@ class LLMServiceImpl extends LLMService {
       debugPrint('\n[LLMService] STEP 1: PREPARING LOCAL INFERENCE');
       debugPrint('[LLMService]   Device type: LOCAL (no backend calls)');
       debugPrint('[LLMService]   Model path: $_modelPath');
-      debugPrint('[LLMService]   User input length: ${userInput.length} characters');
+      debugPrint(
+        '[LLMService]   User input length: ${userInput.length} characters',
+      );
 
       // Step 2: Ensure model is loaded
       debugPrint('\n[LLMService] STEP 2: CHECKING MODEL');
       final modelFile = await _getModelFile();
       if (!await modelFile.exists()) {
-        debugPrint('[LLMService] ⚠ Model not found, would need to download first');
+        debugPrint(
+          '[LLMService] ⚠ Model not found, would need to download first',
+        );
         return null;
       }
 
@@ -114,7 +120,9 @@ class LLMServiceImpl extends LLMService {
       // Step 3: Build prompt
       debugPrint('\n[LLMService] STEP 3: BUILDING EVALUATION PROMPT');
       final evaluationPrompt = _buildEvaluationPrompt(prompt);
-      debugPrint('[LLMService]   Prompt length: ${evaluationPrompt.length} chars');
+      debugPrint(
+        '[LLMService]   Prompt length: ${evaluationPrompt.length} chars',
+      );
       debugPrint('[LLMService]   ✓ Prompt prepared');
 
       // Step 4: Run inference on device
@@ -156,7 +164,8 @@ class LLMServiceImpl extends LLMService {
         cefrLevel: parsedResult['cefr_level'],
         breakdown: ScoreBreakdown(
           grammar: (parsedResult['breakdown']['grammar'] as num).toDouble(),
-          vocabulary: (parsedResult['breakdown']['vocabulary'] as num).toDouble(),
+          vocabulary: (parsedResult['breakdown']['vocabulary'] as num)
+              .toDouble(),
           accuracy: (parsedResult['breakdown']['accuracy'] as num).toDouble(),
           detail: (parsedResult['breakdown']['detail'] as num).toDouble(),
         ),
@@ -169,11 +178,17 @@ class LLMServiceImpl extends LLMService {
       debugPrint('\n[LLMService] STEP 8: INFERENCE SUMMARY');
       debugPrint('[LLMService]   Score breakdown:');
       debugPrint('[LLMService]     - Grammar: ${llmResult.breakdown.grammar}');
-      debugPrint('[LLMService]     - Vocabulary: ${llmResult.breakdown.vocabulary}');
-      debugPrint('[LLMService]     - Accuracy: ${llmResult.breakdown.accuracy}');
+      debugPrint(
+        '[LLMService]     - Vocabulary: ${llmResult.breakdown.vocabulary}',
+      );
+      debugPrint(
+        '[LLMService]     - Accuracy: ${llmResult.breakdown.accuracy}',
+      );
       debugPrint('[LLMService]     - Detail: ${llmResult.breakdown.detail}');
       debugPrint('[LLMService]   Feedback: ${llmResult.feedback}');
-      debugPrint('[LLMService]   Device inference time: ${stopwatch.elapsedMilliseconds}ms');
+      debugPrint(
+        '[LLMService]   Device inference time: ${stopwatch.elapsedMilliseconds}ms',
+      );
 
       debugPrint('\n' + '=' * 80);
       debugPrint('[LLMService] ========== LOCAL INFERENCE COMPLETE ==========');
@@ -276,22 +291,28 @@ Provide a JSON response with this exact structure (no extra text, only JSON):
   }
 
   String _extractUserInput(String prompt) {
-    final match = RegExp(r"User's description:\s*(.*?)(?=Evaluate|$)", dotAll: true)
-        .firstMatch(prompt);
+    final match = RegExp(
+      r"User's description:\s*(.*?)(?=Evaluate|$)",
+      dotAll: true,
+    ).firstMatch(prompt);
     return match?.group(1)?.trim() ?? '';
   }
 
   List<String> _extractKeywords(String prompt) {
-    final match = RegExp(r'Key elements.*?:\s*(.*?)(?=User)', dotAll: true)
-        .firstMatch(prompt);
+    final match = RegExp(
+      r'Key elements.*?:\s*(.*?)(?=User)',
+      dotAll: true,
+    ).firstMatch(prompt);
     if (match == null) return [];
     final keywordsStr = match.group(1) ?? '';
     return keywordsStr.split(RegExp(r'[,;]\s*')).map((k) => k.trim()).toList();
   }
 
   String _extractReference(String prompt) {
-    final match = RegExp(r'Image context.*?:\s*(.*?)(?=Key elements)', dotAll: true)
-        .firstMatch(prompt);
+    final match = RegExp(
+      r'Image context.*?:\s*(.*?)(?=Key elements)',
+      dotAll: true,
+    ).firstMatch(prompt);
     return match?.group(1)?.trim() ?? '';
   }
 

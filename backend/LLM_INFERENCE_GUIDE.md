@@ -29,6 +29,7 @@ pip install -r requirements.txt
 ```
 
 This installs `llama-cpp-python` which provides:
+
 - GGUF model loading and execution
 - GPU acceleration (if available)
 - CPU fallback with threading
@@ -36,18 +37,21 @@ This installs `llama-cpp-python` which provides:
 ## Step 2: Start the Backend Server
 
 **On Windows:**
+
 ```bash
 cd backend
 python start_server.bat
 ```
 
 **On macOS/Linux:**
+
 ```bash
 cd backend
 bash build.sh
 ```
 
 Expected output:
+
 ```
 [LLMService] Configured model path: C:\Users\<user>\.thingual\models\tinyllama.gguf
 [LLM API] Received evaluation request
@@ -65,6 +69,7 @@ By default, Flutter connects to `http://localhost:8000`.
 To use a different backend:
 
 ### Option A: Environment Variable
+
 ```bash
 # Windows PowerShell
 $env:BACKEND_URL="http://192.168.1.100:8000"
@@ -76,7 +81,9 @@ flutter run
 ```
 
 ### Option B: Modify Code
+
 Edit `lib/features/onboarding/picture_description_test/services/llm_service.dart`:
+
 ```dart
 String _getBackendUrl() {
   return 'http://your-backend-server:8000';
@@ -96,6 +103,7 @@ flutter run
 When user submits picture description:
 
 1. **Flutter sends request** → `POST /api/llm/evaluate`
+
    ```json
    {
      "user_response": "A kitchen with people cooking...",
@@ -116,6 +124,7 @@ When user submits picture description:
    - Processing time: 5-15 seconds on CPU, <1s on GPU
 
 4. **Backend returns JSON**
+
    ```json
    {
      "score": 78.5,
@@ -138,6 +147,7 @@ When user submits picture description:
 ### Console Logging
 
 **Backend logs** (in terminal):
+
 ```
 [LLMService] ========== LLM INFERENCE START ==========
 [LLMService] STEP 1: BUILDING EVALUATION PROMPT
@@ -151,6 +161,7 @@ When user submits picture description:
 ```
 
 **Flutter logs** (Android Studio):
+
 ```
 [LLMService] ========== LLM INFERENCE START ==========
 [LLMService] STEP 1: PREPARING REQUEST
@@ -166,32 +177,36 @@ When user submits picture description:
 
 ## Performance Characteristics
 
-| Metric | Time | Notes |
-|--------|------|-------|
-| Model Download (first time) | 2-5 min | Via HTTP from HuggingFace |
-| Model Initialization (first request) | 30-60s | CPU: longer, GPU: faster |
-| Per-inference (CPU) | 5-15s | TinyLlama 1.1B is very fast for its size |
-| Per-inference (GPU) | <1s | If CUDA/Metal available |
-| Cached inference | Same as above | Model stays in memory |
+| Metric                               | Time          | Notes                                    |
+| ------------------------------------ | ------------- | ---------------------------------------- |
+| Model Download (first time)          | 2-5 min       | Via HTTP from HuggingFace                |
+| Model Initialization (first request) | 30-60s        | CPU: longer, GPU: faster                 |
+| Per-inference (CPU)                  | 5-15s         | TinyLlama 1.1B is very fast for its size |
+| Per-inference (GPU)                  | <1s           | If CUDA/Metal available                  |
+| Cached inference                     | Same as above | Model stays in memory                    |
 
 ## Troubleshooting
 
 ### Backend Not Responding
+
 ```
 ❌ INFERENCE ERROR: Connection refused
 ```
 
 **Solution:**
+
 1. Check if backend is running: `curl http://localhost:8000/health`
 2. Verify port 8000 is available: Check firewall
 3. Restart backend server
 
 ### Model Download Fails
+
 ```
 ❌ Failed to initialize model: HTTP error 404
 ```
 
 **Solution:**
+
 1. Check internet connection
 2. Verify model URL in `llm_service.py`
 3. Try manual download:
@@ -200,22 +215,26 @@ When user submits picture description:
    ```
 
 ### Out of Memory
+
 ```
 ❌ Failed to initialize model: Insufficient memory
 ```
 
 **Solution:**
+
 1. Close other applications
 2. Use GPU acceleration if available
 3. Reduce `n_threads` in `llm_service.py`
 4. Use quantized model (already using Q4 4-bit)
 
 ### Slow Inference (>30s per request)
+
 ```
 [LLMService] Inference completed in 35000ms
 ```
 
 **Solution:**
+
 1. This is normal for CPU inference on slower machines
 2. GPU acceleration would help: Install CUDA/Metal
 3. Check system resources during inference
@@ -231,11 +250,13 @@ python app/main.py
 ```
 
 Check status:
+
 ```bash
 curl http://localhost:8000/api/llm/status
 ```
 
 Response:
+
 ```json
 {
   "initialized": true,
@@ -271,12 +292,14 @@ print(f'GPU layers: {model.n_gpu_layers}')
 ## Files Modified
 
 ### Backend
+
 - `backend/requirements.txt` - Added `llama-cpp-python`
 - `backend/app/services/llm_service.py` - LLM inference wrapper (NEW)
 - `backend/app/routers/llm_router.py` - FastAPI endpoints (NEW)
 - `backend/app/main.py` - Registered LLM router
 
 ### Frontend
+
 - `lib/features/.../services/llm_service.dart` - Changed to HTTP backend calls
 - `lib/features/.../picture_description_test_screen.dart` - Uses LLMServiceImpl
 
@@ -285,6 +308,7 @@ print(f'GPU layers: {model.n_gpu_layers}')
 ### POST /api/llm/evaluate
 
 **Request:**
+
 ```json
 {
   "user_response": "string (required)",
@@ -295,6 +319,7 @@ print(f'GPU layers: {model.n_gpu_layers}')
 ```
 
 **Response (200):**
+
 ```json
 {
   "score": 0-100,
@@ -310,6 +335,7 @@ print(f'GPU layers: {model.n_gpu_layers}')
 ```
 
 **Error Response (503):**
+
 ```json
 {
   "detail": "LLM model not available. Please download the model first."
@@ -319,6 +345,7 @@ print(f'GPU layers: {model.n_gpu_layers}')
 ### GET /api/llm/status
 
 **Response:**
+
 ```json
 {
   "initialized": boolean,

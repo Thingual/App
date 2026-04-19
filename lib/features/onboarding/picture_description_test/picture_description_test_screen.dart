@@ -251,6 +251,7 @@ class _PictureDescriptionTestScreenState
     );
   }
 
+  // ignore: unused_element
   Future<void> _debugAssetBundle() async {
     try {
       print('[DEBUG] Checking asset bundle contents...');

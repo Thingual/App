@@ -17,6 +17,7 @@ flutter run
 ```
 
 That's it! The LLM will:
+
 1. Download the model on first request (2-5 minutes)
 2. Analyze user descriptions (5-15s per description)
 3. Return detailed scoring with breakdown
@@ -24,22 +25,26 @@ That's it! The LLM will:
 ## What Works Now
 
 ✅ **Real Model Analysis**
+
 - User submits description
 - Backend loads TinyLlama 1.1B GGUF model
 - Model analyzes the text with actual NLP
 - Returns scores based on model analysis (not hardcoded)
 
 ✅ **Scoring Hybrid System**
+
 - Rule-based: 60% (grammar, keywords, length)
 - LLM-based: 40% (semantic understanding, detail, accuracy)
 - Combined: Balanced assessment
 
 ✅ **Comprehensive Logging**
+
 - Both backend and Flutter show 7-step inference pipeline
 - Console shows each stage for transparency
 - Timestamps and performance metrics
 
 ✅ **Graceful Fallback**
+
 - If backend unavailable → Falls back to rule-based scoring
 - If model not downloaded → Can still use app with rules only
 - Never blocks user experience
@@ -67,16 +72,19 @@ Result Display with LLM Badge
 ## Files Created/Modified
 
 ### Backend (Python)
+
 - ✨ `backend/app/services/llm_service.py` - NEW: LLM inference wrapper
 - ✨ `backend/app/routers/llm_router.py` - NEW: FastAPI endpoints
 - 📝 `backend/app/main.py` - Updated: Register llm_router
 - 📝 `backend/requirements.txt` - Updated: Add llama-cpp-python
 
 ### Frontend (Flutter)
+
 - 📝 `lib/features/.../services/llm_service.dart` - Updated: HTTP calls to backend
 - 📝 `lib/features/.../picture_description_test_screen.dart` - Updated: Use LLMServiceImpl
 
 ### Documentation
+
 - ✨ `backend/LLM_INFERENCE_GUIDE.md` - NEW: Complete setup guide
 - ✨ `backend/setup_llm.bat` - NEW: Quick-start script for Windows
 
@@ -84,33 +92,34 @@ Result Display with LLM Badge
 
 You asked about ONNX runtime. Here's why I chose Python backend instead:
 
-| Aspect | ONNX | Python Backend | Winner |
-|--------|------|---|--------|
-| **Model Format** | Requires conversion | Native GGUF support | Python |
-| **Setup Complexity** | Complex conversion process | Just `pip install` | Python |
-| **Flutter Integration** | Difficult FFI bindings | Simple HTTP calls | Python |
-| **Speed** | Good on device | Good on server | Tied |
-| **Development Time** | Days to weeks | Hours ✅ | Python |
-| **Debugging** | Hard to debug inference | Easy server logging | Python |
-| **Existing Backend** | Would be unused | Uses your backend ✅ | Python |
+| Aspect                  | ONNX                       | Python Backend       | Winner |
+| ----------------------- | -------------------------- | -------------------- | ------ |
+| **Model Format**        | Requires conversion        | Native GGUF support  | Python |
+| **Setup Complexity**    | Complex conversion process | Just `pip install`   | Python |
+| **Flutter Integration** | Difficult FFI bindings     | Simple HTTP calls    | Python |
+| **Speed**               | Good on device             | Good on server       | Tied   |
+| **Development Time**    | Days to weeks              | Hours ✅             | Python |
+| **Debugging**           | Hard to debug inference    | Easy server logging  | Python |
+| **Existing Backend**    | Would be unused            | Uses your backend ✅ | Python |
 
 **Decision**: Python backend is faster, simpler, and uses your existing infrastructure.
 
 ## Performance
 
-| Stage | Time | Notes |
-|-------|------|-------|
-| Model Download (1st time) | 2-5 min | One-time, then cached |
-| Model Load (1st inference) | 30-60s | Cached after first load |
-| Per-inference (CPU) | 5-15s | Depends on CPU speed |
-| Per-inference (GPU) | <1s | If CUDA/Metal available |
-| Subsequent inferences | Same | Model stays in memory |
+| Stage                      | Time    | Notes                   |
+| -------------------------- | ------- | ----------------------- |
+| Model Download (1st time)  | 2-5 min | One-time, then cached   |
+| Model Load (1st inference) | 30-60s  | Cached after first load |
+| Per-inference (CPU)        | 5-15s   | Depends on CPU speed    |
+| Per-inference (GPU)        | <1s     | If CUDA/Metal available |
+| Subsequent inferences      | Same    | Model stays in memory   |
 
 ## Logging Examples
 
 When you run the app and submit a description, you'll see:
 
 **Backend Console:**
+
 ```
 [LLMService] ========== LLM INFERENCE START ==========
 [LLMService] STEP 1: BUILDING EVALUATION PROMPT
@@ -135,6 +144,7 @@ When you run the app and submit a description, you'll see:
 ```
 
 **Flutter Console:**
+
 ```
 [LLMService] ========== LLM INFERENCE START ==========
 [LLMService] STEP 1: PREPARING REQUEST
@@ -155,23 +165,28 @@ When you run the app and submit a description, you'll see:
 After setup, verify everything works:
 
 1. **Backend status:**
+
    ```bash
    curl http://localhost:8000/api/llm/status
    ```
+
    Should return: `{"initialized": true, "ready": true}`
 
 2. **Test inference:**
+
    ```bash
    curl -X POST http://localhost:8000/api/llm/evaluate \
      -H "Content-Type: application/json" \
      -d '{"user_response":"A nice kitchen","keywords":["kitchen"],"reference_description":"A modern kitchen"}'
    ```
+
    Should return: JSON with score, cefr_level, breakdown, feedback
 
 3. **Run app:**
    ```bash
    flutter run
    ```
+
    - Onboarding → Select interests → Download model
    - Go to Picture Description
    - Submit a description
@@ -204,16 +219,19 @@ Optional improvements:
 ## Troubleshooting
 
 **"Backend not responding"**
+
 - Make sure backend server is running
 - Check: `curl http://localhost:8000/health`
 - Look for error messages in backend console
 
 **"Model download failed"**
+
 - Check internet connection
 - Verify HuggingFace is accessible
 - Try manual: `pip install -U llama-cpp-python`
 
 **"Slow inference (>30s)"**
+
 - Normal for CPU on older machines
 - Try GPU acceleration
 - Close other apps to free RAM
@@ -223,6 +241,7 @@ See full guide: `backend/LLM_INFERENCE_GUIDE.md`
 ## Summary
 
 ✅ **Complete Implementation**
+
 - Real TinyLlama 1.1B model inference
 - Python backend with llama-cpp-python
 - Flutter HTTP integration via Dio
@@ -231,12 +250,14 @@ See full guide: `backend/LLM_INFERENCE_GUIDE.md`
 - Production-ready error handling
 
 ✅ **Zero Mock Data**
+
 - No more hardcoded scores
 - No more fake delays
 - Actual NLP analysis happening
 - Scores based on model judgment
 
 ✅ **Transparent Pipeline**
+
 - 7-step logging visible in console
 - Performance metrics recorded
 - Each processing stage shown

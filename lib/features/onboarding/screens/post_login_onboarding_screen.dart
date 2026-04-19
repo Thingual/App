@@ -6,7 +6,7 @@ import '../listening_test/listening_test_screen.dart';
 import '../picture_description_test/picture_description_test_screen.dart';
 import '../picture_description_test/services/model_manager.dart';
 import '../assessment_controller/assessment_controller.dart';
-import '../../authentication/screens/success_screen.dart';
+import '../../dashboard/dashboard_shell.dart';
 import '../assessment_controller/assessment_result_model.dart';
 
 enum LearningPace { casual, serious, intensive }
@@ -174,7 +174,7 @@ class _PostLoginOnboardingScreenState extends State<PostLoginOnboardingScreen> {
         onFinish: () {
           Navigator.pushAndRemoveUntil(
             context,
-            MaterialPageRoute(builder: (_) => const SuccessScreen()),
+            MaterialPageRoute(builder: (_) => const DashboardShell()),
             (route) => false,
           );
         },
@@ -812,17 +812,21 @@ class _ModelDownloadScreenState extends State<_ModelDownloadScreen> {
     if (_isDownloading) return;
 
     setState(() => _isDownloading = true);
-    
+
     // Listen to real download progress from ModelManager
     widget.modelManager.addListener(_updateDownloadProgress);
-    
+
     try {
       debugPrint('[_ModelDownloadScreen] Starting real model download...');
-      debugPrint('[_ModelDownloadScreen] Model URL: ${ModelManager.modelDownloadUrl}');
-      debugPrint('[_ModelDownloadScreen] Listening to real download progress...');
-      
+      debugPrint(
+        '[_ModelDownloadScreen] Model URL: ${ModelManager.modelDownloadUrl}',
+      );
+      debugPrint(
+        '[_ModelDownloadScreen] Listening to real download progress...',
+      );
+
       await widget.modelManager.downloadModel();
-      
+
       if (mounted) {
         setState(() => _isDownloading = false);
         widget.onCompleted();
@@ -844,18 +848,16 @@ class _ModelDownloadScreenState extends State<_ModelDownloadScreen> {
     if (mounted) {
       setState(() {
         _downloadProgress = widget.modelManager.downloadProgress;
-        
+
         // Log progress at key milestones
         final percentage = (_downloadProgress * 100).toInt();
         if (percentage % 10 == 0 || percentage == 100) {
-          debugPrint(
-            '[_ModelDownloadScreen] Download progress: $percentage%',
-          );
+          debugPrint('[_ModelDownloadScreen] Download progress: $percentage%');
         }
       });
     }
   }
-  
+
   @override
   void dispose() {
     widget.modelManager.removeListener(_updateDownloadProgress);
