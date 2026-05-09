@@ -88,6 +88,11 @@ flutter:
     - assets/datasets/listening_dataset.json
     - assets/datasets/picture_description_dataset.json
     - assets/datasets/lessons/unit-1_A1/
+    - assets/datasets/lessons/a1_unit_2/
+    - assets/datasets/lessons/a1_unit_3/
+    - assets/datasets/lessons/a1_unit_4/
+    - assets/datasets/lessons/a1_unit_5.json
+    - assets/datasets/lessons/A1_unit-6.json
     - assets/images/kitchen_couple.jpg
 
   # An image asset can refer to one or more resolution-specific "variants", see

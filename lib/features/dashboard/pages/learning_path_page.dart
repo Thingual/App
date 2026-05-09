@@ -36,18 +36,6 @@ class _LessonNode {
   }
 }
 
-class _FutureUnit {
-  final int unitNumber;
-  final String title;
-  final String level;
-
-  _FutureUnit({
-    required this.unitNumber,
-    required this.title,
-    required this.level,
-  });
-}
-
 class LearningPathPage extends StatefulWidget {
   const LearningPathPage({super.key});
 
@@ -58,6 +46,47 @@ class LearningPathPage extends StatefulWidget {
 class _LearningPathPageState extends State<LearningPathPage> {
   List<_LessonNode> _lessons = const [];
   bool _isLoading = true;
+  int _currentUnit = 1;
+
+  // Define all 6 units with their metadata
+  final List<Map<String, dynamic>> _allUnits = [
+    {
+      'unitNumber': 1,
+      'title': 'First steps in English',
+      'level': 'A1',
+      'color': const Color(0xFF4338CA), // deepIndigo
+    },
+    {
+      'unitNumber': 2,
+      'title': 'Numbers, Colors & Descriptions',
+      'level': 'A1-A2',
+      'color': const Color(0xFF06B6D4), // vivdCyan
+    },
+    {
+      'unitNumber': 3,
+      'title': 'Daily Routines & Time',
+      'level': 'A2',
+      'color': const Color(0xFFF59E0B), // amber
+    },
+    {
+      'unitNumber': 4,
+      'title': 'Food, Shopping & Likes',
+      'level': 'A2',
+      'color': const Color(0xFF4338CA), // deepIndigo
+    },
+    {
+      'unitNumber': 5,
+      'title': 'Family & Describing People',
+      'level': 'A2-B1',
+      'color': const Color(0xFF06B6D4), // vivdCyan
+    },
+    {
+      'unitNumber': 6,
+      'title': 'Communication & Beyond',
+      'level': 'B1',
+      'color': const Color(0xFFF59E0B), // amber
+    },
+  ];
 
   @override
   void initState() {
@@ -74,7 +103,7 @@ class _LearningPathPageState extends State<LearningPathPage> {
 
   Future<void> _init() async {
     try {
-      final meta = await LessonLoader.instance.loadUnit1LessonMetadata();
+      final meta = await LessonLoader.instance.loadUnitLessonMetadata(_currentUnit);
       if (!mounted) return;
 
       final nodes = meta.map(_nodeFromMeta).toList();
@@ -144,21 +173,6 @@ class _LearningPathPageState extends State<LearningPathPage> {
     });
   }
 
-  final List<_FutureUnit> _futureUnits = [
-    _FutureUnit(
-      unitNumber: 2,
-      title: 'Numbers, Colors & Descriptions',
-      level: 'A1-A2',
-    ),
-    _FutureUnit(unitNumber: 3, title: 'Daily Routines & Time', level: 'A2'),
-    _FutureUnit(unitNumber: 4, title: 'Food, Shopping & Likes', level: 'A2'),
-    _FutureUnit(
-      unitNumber: 5,
-      title: 'Family & Describing People',
-      level: 'A2-B1',
-    ),
-  ];
-
   Future<void> _onLessonTap(_LessonNode lesson) async {
     if (lesson.status == _LessonStatus.locked) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -172,7 +186,10 @@ class _LearningPathPageState extends State<LearningPathPage> {
 
     LessonDefinition loaded;
     try {
-      loaded = await LessonLoader.instance.loadUnit1Lesson(lesson.lessonId);
+      loaded = await LessonLoader.instance.loadLesson(
+        lesson.lessonId,
+        unit: _currentUnit,
+      );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -285,18 +302,27 @@ class _LearningPathPageState extends State<LearningPathPage> {
           _LessonTimeline(lessons: _lessons, onLessonTap: _onLessonTap),
           const SizedBox(height: ThingualSpacing.xl),
 
-          // Future Units
-          SectionHeader(title: 'Upcoming Units'),
-          const SizedBox(height: ThingualSpacing.lg),
-          Column(
-            children: List.generate(
-              _futureUnits.length,
-              (index) => Padding(
-                padding: const EdgeInsets.only(bottom: ThingualSpacing.lg),
-                child: _LockedUnitCard(unit: _futureUnits[index]),
+          // Upcoming Units (2-6 locked for now, only Unit 1 is active)
+          if (_currentUnit == 1) ...[
+            SectionHeader(title: 'Upcoming Units'),
+            const SizedBox(height: ThingualSpacing.lg),
+            Column(
+              children: List.generate(
+                _allUnits.length - 1, // Show units 2-6
+                (index) {
+                  final unit = _allUnits[index + 1];
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: ThingualSpacing.lg),
+                    child: _LockedUnitCard(
+                      unitNumber: unit['unitNumber'],
+                      title: unit['title'],
+                      level: unit['level'],
+                    ),
+                  );
+                },
               ),
             ),
-          ),
+          ],
           const SizedBox(height: ThingualSpacing.xxxl),
         ],
       ),
@@ -789,9 +815,15 @@ class _LessonNodeWidgetState extends State<_LessonNodeWidget>
 }
 
 class _LockedUnitCard extends StatelessWidget {
-  final _FutureUnit unit;
+  final int unitNumber;
+  final String title;
+  final String level;
 
-  const _LockedUnitCard({required this.unit});
+  const _LockedUnitCard({
+    required this.unitNumber,
+    required this.title,
+    required this.level,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -826,14 +858,14 @@ class _LockedUnitCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'UNIT ${unit.unitNumber}',
+                  'UNIT $unitNumber',
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
                     color: Colors.white.withValues(alpha: 0.7),
                   ),
                 ),
                 const SizedBox(height: ThingualSpacing.xs),
                 Text(
-                  unit.title,
+                  title,
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
                     color: Colors.white,
                     fontWeight: FontWeight.w700,
