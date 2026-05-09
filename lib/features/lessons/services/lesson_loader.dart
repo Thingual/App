@@ -1,4 +1,5 @@
 import 'package:flutter/services.dart' show rootBundle;
+import 'dart:convert';
 
 import '../models/lesson_models.dart';
 import 'unit1_lesson_manifest.dart';
@@ -12,6 +13,9 @@ class LessonLoader {
   LessonLoader._();
 
   static final LessonLoader instance = LessonLoader._();
+  
+  // Cache for merged lesson files (unit 4, 5, 6)
+  final Map<String, Map<String, dynamic>> _mergedLessonCache = {};
 
   Future<LessonDefinition> loadLesson(String lessonId, {int unit = 1}) async {
     final assetPath = _getAssetPathForLessonId(lessonId, unit);
@@ -20,7 +24,24 @@ class LessonLoader {
     }
 
     final jsonString = await rootBundle.loadString(assetPath);
-    return LessonDefinition.fromJsonString(jsonString);
+    
+    // Try to parse as a single lesson first (Units 1-3)
+    try {
+      return LessonDefinition.fromJsonString(jsonString);
+    } catch (e) {
+      // If it fails, try parsing as an array of lessons (Units 4-6)
+      try {
+        final decoded = jsonDecode(jsonString) as List<dynamic>;
+        for (final item in decoded) {
+          if (item is Map<String, dynamic> && item['lesson_id'] == lessonId) {
+            return LessonDefinition.fromJson(item);
+          }
+        }
+        throw StateError('Lesson $lessonId not found in merged file: $assetPath');
+      } catch (e2) {
+        throw StateError('Could not parse lesson from $assetPath: $e2');
+      }
+    }
   }
 
   Future<LessonDefinition> loadUnit1Lesson(String lessonId) async {
@@ -30,30 +51,84 @@ class LessonLoader {
   Future<List<LessonDefinition>> loadUnitLessonMetadata(int unit) async {
     final results = <LessonDefinition>[];
     final lessons = _getManifestLessons(unit);
+    final processedAssets = <String>{};
 
     for (final entry in lessons) {
       final assetPath = entry['assetPath'];
-      if (assetPath == null) continue;
-      final jsonString = await rootBundle.loadString(assetPath);
-      final lesson = LessonDefinition.fromJsonString(jsonString);
+      if (assetPath == null || assetPath.isEmpty) continue;
 
-      results.add(
-        LessonDefinition(
-          lessonId: lesson.lessonId,
-          unit: lesson.unit,
-          lessonNumber: lesson.lessonNumber,
-          level: lesson.level,
-          title: lesson.title,
-          description: lesson.description,
-          estimatedMinutes: lesson.estimatedMinutes,
-          xpReward: lesson.xpReward,
-          tasks: const [],
-        ),
-      );
+      // For merged files, only load once and cache all lessons
+      if (_isMergedLessonFile(assetPath)) {
+        if (!processedAssets.contains(assetPath)) {
+          processedAssets.add(assetPath);
+          await _loadAndCacheMergedLessons(assetPath);
+        }
+        
+        final lessonId = entry['lessonId'];
+        if (lessonId != null && _mergedLessonCache.containsKey(lessonId)) {
+          final lessonData = _mergedLessonCache[lessonId]!;
+          results.add(
+            LessonDefinition(
+              lessonId: lessonData['lesson_id'],
+              unit: lessonData['unit'],
+              lessonNumber: lessonData['lesson_number'],
+              level: lessonData['level'],
+              title: lessonData['title'],
+              description: lessonData['description'],
+              estimatedMinutes: lessonData['estimated_minutes'],
+              xpReward: lessonData['xp_reward'],
+              tasks: const [],
+            ),
+          );
+        }
+      } else {
+        // Individual lesson file
+        final jsonString = await rootBundle.loadString(assetPath);
+        final lesson = LessonDefinition.fromJsonString(jsonString);
+
+        results.add(
+          LessonDefinition(
+            lessonId: lesson.lessonId,
+            unit: lesson.unit,
+            lessonNumber: lesson.lessonNumber,
+            level: lesson.level,
+            title: lesson.title,
+            description: lesson.description,
+            estimatedMinutes: lesson.estimatedMinutes,
+            xpReward: lesson.xpReward,
+            tasks: const [],
+          ),
+        );
+      }
     }
 
     results.sort((a, b) => a.lessonNumber.compareTo(b.lessonNumber));
     return results;
+  }
+
+  Future<void> _loadAndCacheMergedLessons(String assetPath) async {
+    try {
+      final jsonString = await rootBundle.loadString(assetPath);
+      final decoded = jsonDecode(jsonString) as List<dynamic>;
+      
+      for (final item in decoded) {
+        if (item is Map<String, dynamic>) {
+          final lessonId = item['lesson_id'] as String?;
+          if (lessonId != null) {
+            _mergedLessonCache[lessonId] = item;
+          }
+        }
+      }
+    } catch (e) {
+      throw StateError('Could not load merged lessons from $assetPath: $e');
+    }
+  }
+
+  bool _isMergedLessonFile(String assetPath) {
+    return assetPath.contains('a1_unit_5') ||
+        assetPath.contains('A1_unit-6') ||
+        assetPath.contains('a1_unit_4/l02_to_l04') ||
+        assetPath.contains('a1_unit_4/l05_to_l08');
   }
 
   Future<List<LessonDefinition>> loadUnit1LessonMetadata() async {
