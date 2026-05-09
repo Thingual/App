@@ -47,6 +47,7 @@ class _LearningPathPageState extends State<LearningPathPage> {
   List<_LessonNode> _lessons = const [];
   bool _isLoading = true;
   int _currentUnit = 1;
+  Set<int> _expandedUnits = {}; // Track which units are expanded
 
   // Define all 6 units with their metadata
   final List<Map<String, dynamic>> _allUnits = [
@@ -103,7 +104,9 @@ class _LearningPathPageState extends State<LearningPathPage> {
 
   Future<void> _init() async {
     try {
-      final meta = await LessonLoader.instance.loadUnitLessonMetadata(_currentUnit);
+      final meta = await LessonLoader.instance.loadUnitLessonMetadata(
+        _currentUnit,
+      );
       if (!mounted) return;
 
       final nodes = meta.map(_nodeFromMeta).toList();
@@ -311,12 +314,23 @@ class _LearningPathPageState extends State<LearningPathPage> {
                 _allUnits.length - 1, // Show units 2-6
                 (index) {
                   final unit = _allUnits[index + 1];
+                  final unitNumber = unit['unitNumber'] as int;
                   return Padding(
                     padding: const EdgeInsets.only(bottom: ThingualSpacing.lg),
                     child: _LockedUnitCard(
-                      unitNumber: unit['unitNumber'],
+                      unitNumber: unitNumber,
                       title: unit['title'],
                       level: unit['level'],
+                      isExpanded: _expandedUnits.contains(unitNumber),
+                      onExpand: () {
+                        setState(() {
+                          if (_expandedUnits.contains(unitNumber)) {
+                            _expandedUnits.remove(unitNumber);
+                          } else {
+                            _expandedUnits.add(unitNumber);
+                          }
+                        });
+                      },
                     ),
                   );
                 },
@@ -814,78 +828,285 @@ class _LessonNodeWidgetState extends State<_LessonNodeWidget>
   }
 }
 
-class _LockedUnitCard extends StatelessWidget {
+class _LockedUnitCard extends StatefulWidget {
   final int unitNumber;
   final String title;
   final String level;
+  final bool isExpanded;
+  final VoidCallback onExpand;
 
   const _LockedUnitCard({
     required this.unitNumber,
     required this.title,
     required this.level,
+    required this.isExpanded,
+    required this.onExpand,
   });
 
   @override
+  State<_LockedUnitCard> createState() => _LockedUnitCardState();
+}
+
+class _LockedUnitCardState extends State<_LockedUnitCard> {
+  List<_LessonNode> _unitLessons = [];
+  bool _isLoading = false;
+
+  Future<void> _loadUnitLessons() async {
+    if (_unitLessons.isNotEmpty) return; // Already loaded
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final meta = await LessonLoader.instance.loadUnitLessonMetadata(
+        widget.unitNumber,
+      );
+      final nodes = meta.map((meta) {
+        return _LessonNode(
+          lessonNumber: meta.lessonNumber,
+          lessonId: meta.lessonId,
+          title: meta.title,
+          type: meta.lessonNumber == 8 ? 'QUIZ' : 'LESSON',
+          status: _LessonStatus.locked,
+        );
+      }).toList();
+      setState(() {
+        _unitLessons = nodes;
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not load unit lessons: $e')),
+        );
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(ThingualSpacing.lg),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Colors.grey[400]!, Colors.grey[500]!],
-        ),
-        borderRadius: BorderRadius.circular(ThingualRadius.lg),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(ThingualSpacing.md),
+    return Column(
+      children: [
+        GestureDetector(
+          onTap: () {
+            if (widget.isExpanded) {
+              widget.onExpand();
+            } else {
+              _loadUnitLessons();
+              widget.onExpand();
+            }
+          },
+          child: Container(
+            padding: const EdgeInsets.all(ThingualSpacing.lg),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(ThingualRadius.md),
+              gradient: LinearGradient(
+                colors: [Colors.grey[400]!, Colors.grey[500]!],
+              ),
+              borderRadius: BorderRadius.circular(ThingualRadius.lg),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.1),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
-            child: const Icon(Icons.lock, color: Colors.white, size: 20),
-          ),
-          const SizedBox(width: ThingualSpacing.lg),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
               children: [
-                Text(
-                  'UNIT $unitNumber',
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: Colors.white.withValues(alpha: 0.7),
+                Container(
+                  padding: const EdgeInsets.all(ThingualSpacing.md),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(ThingualRadius.md),
+                  ),
+                  child: const Icon(Icons.lock, color: Colors.white, size: 20),
+                ),
+                const SizedBox(width: ThingualSpacing.lg),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'UNIT ${widget.unitNumber}',
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: Colors.white.withValues(alpha: 0.7),
+                        ),
+                      ),
+                      const SizedBox(height: ThingualSpacing.xs),
+                      Text(
+                        widget.title,
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: ThingualSpacing.sm),
+                      Text(
+                        'Complete previous unit to unlock this unit',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Colors.white.withValues(alpha: 0.8),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: ThingualSpacing.xs),
-                Text(
-                  title,
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: ThingualSpacing.sm),
-                Text(
-                  'Complete previous unit to unlock this unit',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Colors.white.withValues(alpha: 0.8),
-                  ),
+                const SizedBox(width: ThingualSpacing.md),
+                Column(
+                  children: [
+                    Icon(
+                      widget.isExpanded
+                          ? Icons.keyboard_arrow_up
+                          : Icons.keyboard_arrow_down,
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                  ],
                 ),
               ],
             ),
           ),
+        ),
+        // Expanded content - show lessons
+        if (widget.isExpanded) ...[
+          const SizedBox(height: ThingualSpacing.lg),
+          if (_isLoading)
+            const Padding(
+              padding: EdgeInsets.all(ThingualSpacing.lg),
+              child: CircularProgressIndicator(),
+            )
+          else if (_unitLessons.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: ThingualSpacing.lg),
+              child: _LockedLessonList(
+                lessons: _unitLessons,
+              ),
+            ),
+        ],
+      ],
+    );
+  }
+}
+
+class _LockedLessonList extends StatelessWidget {
+  final List<_LessonNode> lessons;
+
+  const _LockedLessonList({required this.lessons});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: List.generate(lessons.length, (index) {
+        final lesson = lessons[index];
+        final isLast = index == lessons.length - 1;
+
+        return Column(
+          children: [
+            _LockedLessonTile(lesson: lesson),
+            if (!isLast)
+              SizedBox(
+                height: 60,
+                child: Center(
+                  child: Container(
+                    width: 3,
+                    height: 60,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        );
+      }),
+    );
+  }
+}
+
+class _LockedLessonTile extends StatelessWidget {
+  final _LessonNode lesson;
+
+  const _LockedLessonTile({required this.lesson});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: ThingualSpacing.lg),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          // Vertical line connector (left)
+          SizedBox(
+            width: 30,
+            child: Center(
+              child: Container(
+                width: 3,
+                height: 3,
+                decoration: BoxDecoration(
+                  color: Colors.grey[400],
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ),
+          ),
           const SizedBox(width: ThingualSpacing.md),
-          ThingualBadge(
-            label: 'LOCKED',
-            backgroundColor: Colors.white.withValues(alpha: 0.15),
-            textColor: Colors.white,
+          // Lesson card (disabled/locked appearance)
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.all(ThingualSpacing.md),
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                borderRadius: BorderRadius.circular(ThingualRadius.md),
+                border: Border.all(color: Colors.grey[300]!, width: 1),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(ThingualSpacing.sm),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(ThingualRadius.sm),
+                    ),
+                    child: Icon(
+                      lesson.type == 'QUIZ' ? Icons.quiz : Icons.menu_book,
+                      color: Colors.grey[600],
+                      size: 16,
+                    ),
+                  ),
+                  const SizedBox(width: ThingualSpacing.md),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Lesson ${lesson.lessonNumber}',
+                          style:
+                              Theme.of(context).textTheme.labelSmall?.copyWith(
+                            color: Colors.grey[500],
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          lesson.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style:
+                              Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Colors.grey[600],
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(Icons.lock, color: Colors.grey[400], size: 16),
+                ],
+              ),
+            ),
           ),
         ],
       ),

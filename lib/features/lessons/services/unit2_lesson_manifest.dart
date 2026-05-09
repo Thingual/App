@@ -48,8 +48,5 @@ class Unit2LessonAsset {
   final String lessonId;
   final String assetPath;
 
-  const Unit2LessonAsset({
-    required this.lessonId,
-    required this.assetPath,
-  });
+  const Unit2LessonAsset({required this.lessonId, required this.assetPath});
 }
